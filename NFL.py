@@ -11,7 +11,7 @@ import scraping
 from pathlib import Path
 
 logging.basicConfig(
-    filename=f'logs/log_{date.today()}.txt',
+    filename=f'new_log.txt',
     level=logging.INFO,
     format='%(levelname)s - %(message)s',
     filemode='w'

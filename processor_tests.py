@@ -84,11 +84,11 @@ class Full_Season_pipeline_settings:
 
 class Full_Season_Test:
     def __init__(self):
-        with open("full_season_test_games.txt", "r", encoding="utf-8") as f:
+        with open("HTMLs\\full_season_test_games.txt", "r", encoding="utf-8") as f:
             weeks_dict = ast.literal_eval(f.read())
-        with open('full_week_test_teams.txt', 'r', encoding='utf-8') as f:
+        with open('HTMLs\\full_week_test_teams.txt', 'r', encoding='utf-8') as f:
             teams_dict = json.load(f)
-        with open('full_week_test_rosters.txt', 'r', encoding='utf-8') as f:
+        with open('HTMLs\\full_week_test_rosters.txt', 'r', encoding='utf-8') as f:
             roster_dict = json.load(f)  
         self.html = HTML_Injection(weekhtmls=weeks_dict, rosterhtml=roster_dict, teamhtml=teams_dict)
         self.obj = Season(self.html, Full_Season_pipeline_settings)
