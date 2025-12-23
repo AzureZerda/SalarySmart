@@ -1083,5 +1083,3 @@ class Scraper_Settings:
         self.scrape_games=games
         self.start_week=start_week
         self.end_week=end_week
-
-class Scraper:
