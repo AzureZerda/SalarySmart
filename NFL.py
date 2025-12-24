@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 from bs4 import BeautifulSoup
 from datetime import date
-from extractor import DIM_Players_Mixin, Table, Fact, BaseClasses
+from extractor import DIM_Players_Mixin, Table, Fact, BaseClasses, TableNotFound
 import logging
 import json
 import scraping
@@ -63,6 +63,7 @@ class HTML_Layer:
             self.team_htmls={}
             self.roster_htmls={}
             self.week_htmls={}
+            self.salary_htmls={}
 
             if settings.scrape_teams==True or settings.scrape_rosters==True:
                 logging.debug('Scraping loop for teams/rosters triggered\n')
@@ -199,6 +200,57 @@ def run_pipeline(year):
     obj=Season(htmls,settings)
     return
 
+class SalaryTable(Fact):
+    def __init__(self,html):
+        soup = BeautifulSoup(html, "html.parser")
+        self.salary_dfs=[]
+        for cat in Sal_Cat.registry:
+            try:
+                super().__init__(cat,soup)
+            except TableNotFound:
+                continue
+            self.process_df(self.df)
+            self.salary_dfs.append(self.df)
+        team_table=pd.concat(self.salary_dfs).fillna(0)
+        print(team_table)
+        team_table=team_table.melt(id_vars=['Player', 'Year'], var_name='Metric')
+
+    def process_df(self, df):
+        try:
+            df.drop(columns=[''],inplace=True)
+        except:
+            pass
+        col = df.columns[0] # iloc because the column name changes from team to team(and even for a given team)
+
+        df[col] = df[col].apply(self.crop_left_after_space)
+
+        for col in df.columns:
+            df[col] = df[col].str.replace(r'[%,(,),$,,]', '', regex=True)
+            df[col] = df[col].str.replace('-', '0')
+
+        year=2025
+
+        df['Year'] = year
+        
+        df.rename(columns={df.columns[0]:'Player'},inplace=True)
+
+        try:
+            df.drop(columns=['Pos','Age'],inplace=True)
+        except:
+            try:
+                df.drop(columns=['Pos'],inplace=True)
+            except:
+                pass
+
+    def crop_left_after_space(self, s):
+        if pd.isna(s):
+            return s
+        parts = s.split(' ', 1)
+        if len(parts) < 2:
+            return s
+        right_len = len(parts[1])
+        return s[right_len:].replace('_', '')
+
 class Season(Season_Mixins):
     def __init__(self,htmls,settings):
         self.settings = settings
@@ -238,6 +290,11 @@ class Season(Season_Mixins):
         fact_scores_dfs=[]
         dim_games_dfs=[]
         dim_score_details_dfs=[]
+
+        # salary stuff goes here
+        
+        for team in htmls.salary_htmls:
+            salary_table=SalaryTable(htmls.salary_htmls[team])
 
         for week in range(start_week,end_week):
             logging.info(f'Starting week {week}...')
@@ -915,8 +972,8 @@ class Sal_Cat(ABCMeta): # any flat class used to define a salary category must i
 
         return new_cls
 
-class SalaryTable(metaclass=Sal_Cat):
-    id='table_active'
+class ActiTable(metaclass=Sal_Cat):
+    id='table_avective'
     cat='Salaries'
     expected_cols={}
     required=True

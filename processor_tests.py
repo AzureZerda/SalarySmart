@@ -9,11 +9,12 @@ pd.set_option('display.max_columns', None)
 pd.set_option('display.width', None)
 
 class HTML_Injection:
-      def __init__(self,teamhtml=None,rosterhtml=None,weekhtmls=None):
+      def __init__(self,teamhtml=None,rosterhtml=None,weekhtmls=None,salaryhtmls=None):
             pass
             self.team_htmls=teamhtml
             self.roster_htmls=rosterhtml
             self.week_htmls=weekhtmls
+            self.salary_htmls=salaryhtmls  
 
 class game_test_1_pipeline_settings:
     start_week=1
@@ -90,7 +91,9 @@ class Full_Season_Test:
             teams_dict = json.load(f)
         with open('HTMLs\\full_week_test_rosters.txt', 'r', encoding='utf-8') as f:
             roster_dict = json.load(f)  
-        self.html = HTML_Injection(weekhtmls=weeks_dict, rosterhtml=roster_dict, teamhtml=teams_dict)
+        with open('HTMLs\\team_cap_htmls_2025.json','r',encoding='utf-8') as f:
+            salary_htmls=json.load(f)
+        self.html = HTML_Injection(weekhtmls=weeks_dict, rosterhtml=roster_dict, teamhtml=teams_dict,salaryhtmls=salary_htmls)
         self.obj = Season(self.html, Full_Season_pipeline_settings)
 
 class Test_NFL_Rosters:
