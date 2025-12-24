@@ -225,7 +225,10 @@ class SalaryTable(Fact):
 
         for col in df.columns:
             df[col] = df[col].str.replace(r'[%,(,),$,,]', '', regex=True)
-            df[col] = df[col].str.replace('-', '0')
+            for col in df.columns:
+                if col == df.columns[0]:
+                    continue
+                df[col] = df[col].str.replace('-', '0')
 
         year=2025
 
@@ -335,6 +338,7 @@ class Season(Season_Mixins):
             dim_score_details.to_excel(writer,sheet_name='DIM_Score_Details',index=False)
             self.teamref.to_excel(writer,sheet_name='DIM_Players',index=False)
             self.dim_teams.to_excel(writer,sheet_name='DIM_Teams',index=False)
+            self.salary_df.to_excel(writer,sheet_name='FACT_Salaries',index=False)
 
 class Week(Fact):
     def __init__(self,week,year,htmls,roster_table,last_week):
@@ -978,7 +982,7 @@ class Sal_Cat(ABCMeta): # any flat class used to define a salary category must i
         return new_cls
 
 class ActiTable(metaclass=Sal_Cat):
-    id='table_avective'
+    id='table_active'
     cat='Salaries'
     expected_cols={}
     required=True
