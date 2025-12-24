@@ -212,8 +212,7 @@ class SalaryTable(Fact):
             self.process_df(self.df)
             self.salary_dfs.append(self.df)
         team_table=pd.concat(self.salary_dfs).fillna(0)
-        print(team_table)
-        team_table=team_table.melt(id_vars=['Player', 'Year'], var_name='Metric')
+        self.df=team_table.melt(id_vars=['Player', 'Year'], var_name='Metric')
 
     def process_df(self, df):
         try:
@@ -293,8 +292,14 @@ class Season(Season_Mixins):
 
         # salary stuff goes here
         
+        self.team_dfs=[]
+
         for team in htmls.salary_htmls:
             salary_table=SalaryTable(htmls.salary_htmls[team])
+            salary_table.df['Team']=team
+            self.team_dfs.append(salary_table.df)
+
+        self.salary_df=pd.concat(self.team_dfs)
 
         for week in range(start_week,end_week):
             logging.info(f'Starting week {week}...')
