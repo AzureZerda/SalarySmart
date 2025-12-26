@@ -6,6 +6,20 @@ from abc import abstractmethod, ABC
 
 pd.set_option('future.no_silent_downcasting', True)
 
+def apply_dim_id(fact_table,dim_table,join_map,id_col,replace_col):
+    # join_map: {fact_col: dim_col}
+    merged=fact_table.merge(
+        dim_table[list(join_map.values())+[id_col]],
+        left_on=list(join_map.keys()),
+        right_on=list(join_map.values()),
+        how='left'
+    )
+
+    merged[replace_col]=merged[id_col]
+
+    return merged.drop(columns=list(join_map.values())+[id_col])
+
+
 class ExtractionFailed(Exception):
     pass
 
