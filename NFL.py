@@ -244,14 +244,21 @@ class SalaryTable(Fact):
             except:
                 pass
 
-    def crop_left_after_space(self, s):
+    def crop_left_after_space(self,s):
         if pd.isna(s):
             return s
-        parts = s.split(' ', 1)
-        if len(parts) < 2:
-            return s
-        right_len = len(parts[1])
-        return s[right_len:].replace('_', '')
+
+        spaces=[i for i,c in enumerate(s) if c==' ']
+
+        if len(spaces)==1:
+            cut=spaces[0]
+        else:
+            cut=spaces[1]
+        
+        scrape_chars=s[cut:]
+        crop=len(scrape_chars)-1
+
+        return s[crop:].replace('_','').strip()
 
 class Season(Season_Mixins):
     def __init__(self,htmls,settings):
