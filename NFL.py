@@ -5,6 +5,7 @@ import pandas as pd
 from bs4 import BeautifulSoup
 from datetime import date
 from extractor import DIM_Players_Mixin, Table, Fact, BaseClasses, TableNotFound
+import extractor
 import logging
 import json
 import scraping
@@ -29,6 +30,8 @@ for cat in stats_dict:
     dim_stats[cat.lower()]={}
     for item in stats_dict[cat]:
         dim_stats[cat.lower()][item['Abbrev']]=item['ID']
+
+aliases=pd.read_json('secrets/aliases.json')
 
 # base classes
 
@@ -139,7 +142,7 @@ class HTML_Layer:
 
 class default_pipeline_settings:
     start_week=1
-    end_week=3
+    end_week=16
     scrape_rosters=True
     scrape_teams=True
     scrape_games=True
@@ -210,9 +213,10 @@ class SalaryTable(Fact):
             except TableNotFound:
                 continue
             self.process_df(self.df)
+            self.df['Category']=cat.name
             self.salary_dfs.append(self.df)
         team_table=pd.concat(self.salary_dfs).fillna(0)
-        self.df=team_table.melt(id_vars=['Player', 'Year'], var_name='Metric')
+        self.df=team_table.melt(id_vars=['Player', 'Year', 'Category'], var_name='Metric')
 
     def process_df(self, df):
         try:
@@ -262,6 +266,7 @@ class SalaryTable(Fact):
 
 class Season(Season_Mixins):
     def __init__(self,htmls,settings):
+        print('\nskibbidi\n')
         self.settings = settings
         self.htmls = htmls
         logging.info(f'Starting process for the {settings.year} NFL Season.\n\n')
@@ -304,12 +309,19 @@ class Season(Season_Mixins):
         
         self.team_dfs=[]
 
-        for team in htmls.salary_htmls:
-            salary_table=SalaryTable(htmls.salary_htmls[team])
-            salary_table.df['Team']=team
-            self.team_dfs.append(salary_table.df)
+        #for team in htmls.salary_htmls:
+            #salary_table=SalaryTable(htmls.salary_htmls[team])
+            #salary_table.df['Team']=team
+            #self.team_dfs.append(salary_table.df)
 
-        self.salary_df=pd.concat(self.team_dfs)
+        #self.salary_df=pd.concat(self.team_dfs)
+
+        #print(self.salary_df)
+
+        self.teamref['Tm']=self.teamref['Team'].drop(columns=['Team'])
+
+        #self.salary_df=extractor.apply_alias(self.salary_df,aliases,'Player')
+        #self.salary_df=extractor.sub_dim_id(self.salary_df,self.teamref.copy(),{'Player':'Name','Team':'Tm'},'Player_ID','Player')
 
         for week in range(start_week,end_week):
             logging.info(f'Starting week {week}...')
@@ -345,7 +357,7 @@ class Season(Season_Mixins):
             dim_score_details.to_excel(writer,sheet_name='DIM_Score_Details',index=False)
             self.teamref.to_excel(writer,sheet_name='DIM_Players',index=False)
             self.dim_teams.to_excel(writer,sheet_name='DIM_Teams',index=False)
-            self.salary_df.to_excel(writer,sheet_name='FACT_Salaries',index=False)
+            #self.salary_df.to_excel(writer,sheet_name='FACT_Salaries',index=False)
 
 class Week(Fact):
     def __init__(self,week,year,htmls,roster_table,last_week):
@@ -1121,13 +1133,14 @@ class DIM_Players(DIM_Players_Mixin):
             self.df=table.base_roster.copy()
             self.generate_player_id(self.df['Player'],self.df['BirthDate'])
             self.df['Team']=teams[team]['abbr']
-            self.df['Player_ID']=self.df['Player_ID'].astype(str)+'_'+self.df['Team'].astype(str)
-            self.df['Player_ID_Year']=self.df['Player_ID'].astype(str)+'_'+str(self.year)
+            self.df['Player_ID']=self.df['Player'].astype(str)+'_'+str(self.year)+'_'+self.df['Team'].astype(str)
+            self.df['Team_ID']=self.df['Player'].astype(str)+'_'+teams[team]['abbr']
+            self.df['Year_ID']=self.df['Player'].astype(str)+'_'+str(self.year)
             self.dfs[teams[team]['abbr']]=self.df
         self.df=pd.concat(self.dfs)
         
         cols = self.df.columns.tolist()
-        for col in ['Player_ID','Player'][::-1]:
+        for col in ['Player_ID','Player','Team_ID','Year_ID'][::-1]:
             cols.insert(0, cols.pop(cols.index(col)))
         self.df = self.df[cols]
 
