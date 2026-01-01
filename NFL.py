@@ -281,7 +281,6 @@ class SalaryTable(Fact):
 
 class Season(Season_Mixins):
     def __init__(self,htmls,settings):
-        print('\nskibbidi\n')
         self.settings = settings
         self.htmls = htmls
         logging.info(f'Starting process for the {settings.year} NFL Season.\n\n')
@@ -312,7 +311,7 @@ class Season(Season_Mixins):
                 teamobj=Team(team,htmls)
                 teamrows.append(teamobj.team_details)
             dim_teams=pd.DataFrame(teamrows,columns=['Team','Name','Record','Pct','Head Coach','Offensive Coordinator','Defensive Coordinator','General Manager','Stadium'])
-            dim_teams['Team']=dim_teams['Team']+f'_{settings.year}'
+            dim_teams['Team_Year']=dim_teams['Team']+f'_{settings.year}'
             self.dim_teams=dim_teams
 
         fact_stats_dfs=[]
@@ -362,17 +361,60 @@ class Season(Season_Mixins):
         fact_stats=pd.concat(fact_stats_dfs)
         fact_stats['Tm']=fact_stats['Tm'].astype(str)+f'_{settings.year}'
         fact_scoring=pd.concat(fact_scores_dfs)
-        dim_games=pd.concat(dim_games_dfs)
+        self.dim_games=pd.concat(dim_games_dfs)
         dim_score_details=pd.concat(dim_score_details_dfs)
+
+        self.add_soo_sov(self.dim_games,self.dim_teams)
         
         with pd.ExcelWriter(f'{self.save_path}\\dashboard.xlsx',mode='w') as writer:
             fact_stats.to_excel(writer,sheet_name='FACT_Stats',index=False)
             fact_scoring.to_excel(writer,sheet_name='FACT_Scoring',index=False)
-            dim_games.to_excel(writer,sheet_name='DIM_Games',index=False)
+            self.dim_games.to_excel(writer,sheet_name='DIM_Games',index=False)
             dim_score_details.to_excel(writer,sheet_name='DIM_Score_Details',index=False)
             self.teamref.to_excel(writer,sheet_name='DIM_Players',index=False)
             self.dim_teams.to_excel(writer,sheet_name='DIM_Teams',index=False)
             #self.salary_df.to_excel(writer,sheet_name='FACT_Salaries',index=False)
+
+    def add_soo_sov(self,games_table,teams_table):
+        merged=games_table.merge(
+        teams_table[['Team','Pct']],
+        left_on='Opponent',
+        right_on='Team',
+        how='left'
+        )
+
+        merged.rename(columns={'Pct':'SoO','Team_x':'Team'},inplace=True)
+        merged.drop(columns=['Team_y'],inplace=True)
+        ref_table=merged[['Team','SoO']]
+        wins_table=merged[merged['Result']=='W'][['Team','SoO']]
+        ref_table=ref_table.sort_values(by='Team').reset_index(drop=True)
+        ref_table.dropna(inplace=True)
+
+        soo_table=(
+            ref_table
+            .groupby('Team',as_index=False)['SoO']
+            .mean().round(3)
+        )
+
+        sov_table=(
+            wins_table
+            .groupby('Team',as_index=False)['SoO']
+            .mean().round(3)
+        )
+
+        soo_sov_table=soo_table.merge(
+            sov_table[['Team','SoO']].rename(columns={'SoO':'SoV'}),
+            on='Team',
+            how='left'
+        )
+
+        teams_table=teams_table.merge(
+            soo_sov_table[['Team','SoO','SoV']].rename(columns={'SoO':'SoS'}),
+            on='Team',
+            how='left'
+        )
+        self.dim_teams=teams_table
+        self.dim_games=merged
 
 class Week(Fact):
     def __init__(self,week,year,htmls,roster_table,last_week):
@@ -471,14 +513,24 @@ class DIM_Games(Season_Mixins):
 
         scorebox=soup.find('div',class_='scorebox')
         self.sects=scorebox.find_all('strong')
+        scores=soup.find_all('div',class_='scores')
 
         away_team_box=self.sects[0]
         away_team=away_team_box.get_text().strip()
+        score_box=scores[0]
+        away_score=score_box.find('div',class_='score').get_text().strip()
 
         home_team_box=self.sects[2]
         home_team=home_team_box.get_text().strip()
+        score_box=scores[1]
+        home_score=score_box.find('div',class_='score').get_text().strip()
 
-
+        if home_score>away_score:
+            self.home_result='W'
+            self.away_result='L'
+        else:
+            self.home_result='L'
+            self.away_result='W'
 
         self.home_team_key= teams[home_team]['abbr'].upper()
         self.away_team_key=teams[away_team]['abbr'].upper()
@@ -507,12 +559,12 @@ class DIM_Games(Season_Mixins):
 
         base_list=[game_id,game_desc,week,year,self.game_date,self.game_time,self.stadium,self.roof,self.surface,self.ref]
 
-        home_row=[self.team_tags[self.home_team_key],self.home_team_key,self.away_team_key]+base_list
-        away_row=[self.team_tags[self.away_team_key],self.away_team_key,self.home_team_key]+base_list
+        home_row=[self.team_tags[self.home_team_key],self.home_team_key,self.away_team_key,self.home_result]+base_list
+        away_row=[self.team_tags[self.away_team_key],self.away_team_key,self.home_team_key,self.away_result]+base_list
 
         rows=[home_row,away_row]
 
-        self.df=pd.DataFrame(rows,columns=['Team_ID','Team','Opponent','Game ID','Game','Week','Year','Date','Time','Stadium','Roof','Surface','Referee'])
+        self.df=pd.DataFrame(rows,columns=['Team_ID','Team','Opponent','Result','Game ID','Game','Week','Year','Date','Time','Stadium','Roof','Surface','Referee'])
 
 class Fact_Stats: # orchestration
     def __init__(self,game_id,soup,roster_table,game_table):
