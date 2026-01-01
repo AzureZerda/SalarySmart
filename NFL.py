@@ -181,6 +181,7 @@ class Team(Table,Season_Mixins):
         soup=BeautifulSoup(html,'html.parser')
         team_details_area=soup.find('div',{'data-template':'Partials/Teams/Summary'})
         details=self.extract_from_html_box(team_details_area)
+        record=self.generate_record(team_details_area)
         if 'General_Manager' not in details:
             for detail in list(details.keys()):
                 if 'GM' in detail or 'General_Manager' in detail:
@@ -193,7 +194,21 @@ class Team(Table,Season_Mixins):
             except:
                 value='None'
                 setattr(self, detail, value)
-        self.team_details=[team_abbr,team,self.Coach,self.Offensive_Coordinator,self.Defensive_Coordinator,self.General_Manager,self.Stadium]
+        self.team_details=[team_abbr,team,self.Record,self.Pct,self.Coach,self.Offensive_Coordinator,self.Defensive_Coordinator,self.General_Manager,self.Stadium]
+    
+    def generate_record(self,record):
+        target_line=record.find('p')
+        record=target_line.get_text(strip=True).split('Record:')[1].split(',')[0]
+
+        wins=record.split('-')[0].strip()
+        losses=record.split('-')[1].strip()
+        draws=record.split('-')[2].strip()
+
+        total_games=int(wins)+int(losses)+int(draws)
+        points=int(wins)+int(draws)*0.5
+        pct=round(points/total_games,3)
+        setattr(self, 'Record', record)
+        setattr(self, 'Pct', pct)
 
 def run_pipeline(year):
     logging.info('Initializing pipeline...\n')
@@ -296,7 +311,7 @@ class Season(Season_Mixins):
             for team in teams:
                 teamobj=Team(team,htmls)
                 teamrows.append(teamobj.team_details)
-            dim_teams=pd.DataFrame(teamrows,columns=['Team','Name','Head Coach','Offensive Coordinator','Defensive Coordinator','General Manager','Stadium'])
+            dim_teams=pd.DataFrame(teamrows,columns=['Team','Name','Record','Pct','Head Coach','Offensive Coordinator','Defensive Coordinator','General Manager','Stadium'])
             dim_teams['Team']=dim_teams['Team']+f'_{settings.year}'
             self.dim_teams=dim_teams
 
