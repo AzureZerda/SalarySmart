@@ -6,7 +6,7 @@ from abc import abstractmethod, ABC
 
 pd.set_option('future.no_silent_downcasting', True)
 
-def apply_dim_id(fact_table,dim_table,join_map,id_col,replace_col):
+def sub_dim_id(fact_table,dim_table,join_map,id_col,replace_col):
     # join_map: {fact_col: dim_col}
     merged=fact_table.merge(
         dim_table[list(join_map.values())+[id_col]],
@@ -17,8 +17,20 @@ def apply_dim_id(fact_table,dim_table,join_map,id_col,replace_col):
 
     merged[replace_col]=merged[id_col]
 
-    return merged.drop(columns=list(join_map.values())+[id_col])
+    return merged#.drop(columns=list(join_map.values())+[id_col])
 
+def apply_alias(fact_df, alias_df, fact_col):
+    # Merge fact table with aliases
+    merged = fact_df.merge(
+        alias_df,
+        left_on=fact_col,
+        right_on='alias_name',
+        how='left'
+    )
+    # Replace original column with canonical name if exists
+    merged[fact_col] = merged['canonical_name'].fillna(merged[fact_col])
+    # Drop auxiliary columns
+    return merged.drop(columns=['canonical_name','alias_name'])
 
 class ExtractionFailed(Exception):
     pass
