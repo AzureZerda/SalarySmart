@@ -91,7 +91,7 @@ class HTML_Layer:
                     games_count=len(games)
 
                     for i, game in enumerate(games):
-                        logging.info(f'Scraping game {i} of {games_count}\n')
+                        logging.info(f'Scraping game {i+1} of {games_count}\n')
                         game_link=game.find('td',class_='right gamelink')
                         link=game_link.find('a')['href']
                         url=f'https://www.pro-football-reference.com{link}'
@@ -142,7 +142,7 @@ class HTML_Layer:
 
 class default_pipeline_settings:
     start_week=1
-    end_week=16
+    end_week=17
     scrape_rosters=True
     scrape_teams=True
     scrape_games=True
@@ -313,6 +313,8 @@ class Season(Season_Mixins):
             dim_teams=pd.DataFrame(teamrows,columns=['Team','Name','Record','Pct','Head Coach','Offensive Coordinator','Defensive Coordinator','General Manager','Stadium'])
             dim_teams['Team_Year']=dim_teams['Team']+f'_{settings.year}'
             self.dim_teams=dim_teams
+        
+        print(self.dim_teams)
 
         fact_stats_dfs=[]
         fact_scores_dfs=[]
@@ -365,6 +367,10 @@ class Season(Season_Mixins):
         dim_score_details=pd.concat(dim_score_details_dfs)
 
         self.add_soo_sov(self.dim_games,self.dim_teams)
+
+        priority=['Team_Year','Team','Name','Record','Pct','SoS','SoV']
+        cols=priority+[c for c in self.dim_teams.columns if c not in priority]
+        self.dim_teams=self.dim_teams[cols]
         
         with pd.ExcelWriter(f'{self.save_path}\\dashboard.xlsx',mode='w') as writer:
             fact_stats.to_excel(writer,sheet_name='FACT_Stats',index=False)
@@ -1182,7 +1188,12 @@ class Players_Table(Table):
         self.base_roster['Starter']=self.base_roster['Player'].isin(starters)
     
     def get_starters(self):
-        super().__init__(Starters,self.soup)
+        try:
+            super().__init__(Starters,self.soup)
+        except TableNotFound:
+            logging.error('No starters table found- proceeding without starter info')
+            my_list=[]
+            return my_list 
         self.df['Player']=self.df['Player'].str.replace('*','').fillna(0)
         self.df=self.df[self.df['Pos'] != ''].reset_index(drop=True)
         my_list=self.df['Player'].tolist()
@@ -1194,7 +1205,11 @@ class DIM_Players(DIM_Players_Mixin):
         self.dfs={}
 
         for team in teams:
-            html=htmls.roster_htmls[teams[team]['abbr']]
+            try:
+                html=htmls.roster_htmls[teams[team]['abbr']]
+            except KeyError:
+                logging.debug('Key error retrieving roster html- trying lowercase abbr')
+                html=htmls.roster_htmls[teams[team]['abbr'].lower()]
             soup=BeautifulSoup(html,'html.parser')
             table=Players_Table(soup,year)
             self.df=table.base_roster.copy()
@@ -1236,3 +1251,5 @@ class Scraper_Settings:
         self.scrape_games=games
         self.start_week=start_week
         self.end_week=end_week
+
+print('\ncumdump\n')
