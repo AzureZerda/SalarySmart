@@ -5,7 +5,7 @@ import pandas as pd
 from bs4 import BeautifulSoup
 from datetime import date
 from extractor import DIM_Players_Mixin, Table, Fact, BaseClasses, TableNotFound
-import extractor
+from Exporter import Export_Manager
 import logging
 import json
 import scraping
@@ -30,8 +30,6 @@ for cat in stats_dict:
     dim_stats[cat.lower()]={}
     for item in stats_dict[cat]:
         dim_stats[cat.lower()][item['Abbrev']]=item['ID']
-
-aliases=pd.read_json('secrets/aliases.json')
 
 # base classes
 
@@ -216,8 +214,21 @@ def run_pipeline(year):
     settings.year=year
     htmls=HTML_Layer(settings)
     obj=Season(htmls,settings)
+    #merge_dashboards()
     return
 
+def merge_dashboards():
+    sheets={'FACT_Stats':[],'DIM_Games':[],'DIM_Players':[],'DIM_Teams':[]}
+    for file in Path('Dashboards').iterdir():
+        for page in sheets:
+            df=pd.read_excel(file,sheet_name=page)
+            sheets[page].append(df)
+        
+    with pd.ExcelWriter('Dashboards/Full.xlsx',mode='w') as writer:
+        for page in sheets:
+            merged=pd.concat(sheets[page])
+            merged.to_excel(writer,index=False,sheet_name=page)
+            
 class SalaryTable(Fact):
     def __init__(self,html):
         soup = BeautifulSoup(html, "html.parser")
@@ -291,9 +302,7 @@ class Season(Season_Mixins):
 
         settings.end_week+=1 #ensures users can specify their actual desired endweek. no need to understand how the Range loop works
 
-        
-        self.save_path=Path(f"C:\\Users\\19495\\OneDrive\\Documents\\Python\\SalarySmartNFL\\{self.settings.year}")
-        self.save_path.mkdir(parents=True,exist_ok=True)
+        exporter=Export_Manager('Dashboards_Test',save_method='excel',safe_save=True)
 
         start_week=settings.start_week
         end_week=settings.end_week
@@ -313,8 +322,7 @@ class Season(Season_Mixins):
             dim_teams=pd.DataFrame(teamrows,columns=['Team','Name','Record','Pct','Head Coach','Offensive Coordinator','Defensive Coordinator','General Manager','Stadium'])
             dim_teams['Team_Year']=dim_teams['Team']+f'_{settings.year}'
             self.dim_teams=dim_teams
-        
-        print(self.dim_teams)
+
 
         fact_stats_dfs=[]
         fact_scores_dfs=[]
@@ -371,15 +379,18 @@ class Season(Season_Mixins):
         priority=['Team_Year','Team','Name','Record','Pct','SoS','SoV']
         cols=priority+[c for c in self.dim_teams.columns if c not in priority]
         self.dim_teams=self.dim_teams[cols]
-        
-        with pd.ExcelWriter(f'{self.save_path}\\dashboard.xlsx',mode='w') as writer:
-            fact_stats.to_excel(writer,sheet_name='FACT_Stats',index=False)
-            fact_scoring.to_excel(writer,sheet_name='FACT_Scoring',index=False)
-            self.dim_games.to_excel(writer,sheet_name='DIM_Games',index=False)
-            dim_score_details.to_excel(writer,sheet_name='DIM_Score_Details',index=False)
-            self.teamref.to_excel(writer,sheet_name='DIM_Players',index=False)
-            self.dim_teams.to_excel(writer,sheet_name='DIM_Teams',index=False)
-            #self.salary_df.to_excel(writer,sheet_name='FACT_Salaries',index=False)
+
+        export_dic={
+            'FACT_Stats':fact_stats,
+            'FACT_Scoring':fact_scoring,
+            'DIM_Games':self.dim_games,
+            'DIM_Score_Details':dim_score_details,
+            'DIM_Players':self.teamref,
+            'DIM_Teams':self.dim_teams,
+            #'FACT_Salaries':self.salary_df
+        }
+
+        exporter.export(export_dic)
 
     def add_soo_sov(self,games_table,teams_table):
         merged=games_table.merge(
@@ -475,6 +486,8 @@ class Week(Fact):
                 for df in df_list:
                     filtered_df = df[df['Stat'].str.startswith(cat.identifier)]
                     filtered_df = filtered_df[filtered_df['Stat'].isin(cat.summary_stats)]
+
+                    filtered_df.dropna(subset=['Player'],inplace=True)
                     filtered_df=filtered_df.pivot(index=['Player','Tm'],columns=['Stat'],values='Value')
                     filtered_df.columns.name=None
                     filtered_df = filtered_df.reset_index()     
@@ -1176,7 +1189,7 @@ class Starters(BaseClasses.html):
     expected_cols={'Pos':object,'Player':object,'Age':int,'Yrs':object,'GS':int,'Summary of Player Stats':object,'Drafted (tm/rnd/yr)':object}
 
 class Players_Table(Table):
-    def __init__(self,soup,year):
+    def __init__(self,soup,year,team):
         self.year=year
         self.soup=soup
         super().__init__(Roster,soup)
@@ -1186,6 +1199,9 @@ class Players_Table(Table):
         self.base_roster=self.df.copy()
         starters=self.get_starters()
         self.base_roster['Starter']=self.base_roster['Player'].isin(starters)
+        self.base_roster['Player']=self.base_roster['Player'].str.replace(r'\s*\(.*?\)', '', regex=True)
+        if team==['BUF']:
+            print(self.base_roster)
     
     def get_starters(self):
         try:
@@ -1211,7 +1227,7 @@ class DIM_Players(DIM_Players_Mixin):
                 logging.debug('Key error retrieving roster html- trying lowercase abbr')
                 html=htmls.roster_htmls[teams[team]['abbr'].lower()]
             soup=BeautifulSoup(html,'html.parser')
-            table=Players_Table(soup,year)
+            table=Players_Table(soup,year,[teams[team]['abbr']])
             self.df=table.base_roster.copy()
             self.generate_player_id(self.df['Player'],self.df['BirthDate'])
             self.df['Team']=teams[team]['abbr']
@@ -1252,4 +1268,4 @@ class Scraper_Settings:
         self.start_week=start_week
         self.end_week=end_week
 
-print('\ncumdump\n')
+merge_dashboards()
