@@ -7,7 +7,6 @@ from abc import abstractmethod, ABC
 pd.set_option('future.no_silent_downcasting', True)
 
 def sub_dim_id(fact_table,dim_table,join_map,id_col,replace_col):
-    # join_map: {fact_col: dim_col}
     merged=fact_table.merge(
         dim_table[list(join_map.values())+[id_col]],
         left_on=list(join_map.keys()),
@@ -17,7 +16,7 @@ def sub_dim_id(fact_table,dim_table,join_map,id_col,replace_col):
 
     merged[replace_col]=merged[id_col]
 
-    return merged#.drop(columns=list(join_map.values())+[id_col])
+    return merged.drop(columns=list(join_map.values())+[id_col])
 
 def apply_alias(fact_df, alias_df, fact_col):
     # Merge fact table with aliases
@@ -290,12 +289,3 @@ class ExtractionFailed(Exception):
 
 class MissingCols(Exception):
     pass
-
-class Exporter:
-    def __init__(self):
-        export_df_objects=[]
-        validated_dfs=[]
-
-        for obj in export_df_objects:
-            obj.validate_export()
-            validated_dfs.append(obj.df)
