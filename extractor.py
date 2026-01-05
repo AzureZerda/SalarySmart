@@ -126,7 +126,7 @@ class BaseClasses:
 def ExtractRows(soup,id,strip_text):
     james = soup.find('table', id=id)
     if james is None:
-        raise TableNotFound
+        raise TableNotFound(f'Table with id {id} could not be found.')
     table = james.find('tbody')
     rows = table.find_all('tr')
     thead = james.find('thead')
