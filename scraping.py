@@ -86,7 +86,6 @@ class scrape_with_selenium(HTML_Scraper):
 
         try:
             self.driver.get(url)
-            print('\nskibbidi\n')
             try:
                 self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
             except:
