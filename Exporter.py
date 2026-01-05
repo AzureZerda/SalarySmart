@@ -52,6 +52,9 @@ class Export_Manager:
             return {'DataFrame_1':dfs}
         else:
             raise ValueError('Input must be a pandas DataFrame, a list of DataFrames, or a dictionary of DataFrames.')
+        
+    def close(self):
+        self.exporter.close()
 
 class export_as_excel:
     def __init__(self,path,safe_save):
@@ -69,17 +72,21 @@ class export_as_excel:
             path += ".xlsx"
 
         self.path = Path(path)
-        self.parent.mkdir(parents=True, exist_ok=True) 
+        self.path.parent.mkdir(parents=True, exist_ok=True) 
 
     def export(self, name, df):
         df.to_excel(self.writer,sheet_name=name,index=False)
+    
+    def close(self):
+        print('\nskibbidi\n')
+        self.writer.close()
 
 class export_as_csv:
-    def __init__(self):
-        pass
+    def __init__(self,path,safe_save):
+        self.build_save_loc(path,safe_save)
 
     def export(self, name, df):
-        df.to_csv(f'{name}.csv',index=False)
+        df.to_csv(f'{self.path}\{name}.csv',index=False)
     
     def validate_export(self,df):
         for col in df.columns:
@@ -92,3 +99,6 @@ class export_as_csv:
         if not self.path.exists():
             logging.debug(f"Creating directory: {self.path}")
             self.path.mkdir(parents=True, exist_ok=True)
+
+    def close(self):
+        pass
