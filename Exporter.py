@@ -86,11 +86,15 @@ class export_as_csv:
         self.build_save_loc(path,safe_save)
 
     def export(self, name, df):
+        df=self.validate_export(df)
         df.to_csv(f'{self.path}\{name}.csv',index=False)
     
     def validate_export(self,df):
         for col in df.columns:
-            df[col]=df[col].str.replace(',', '/', regex=False)
+            try:
+                df[col]=df[col].str.replace(',', '/', regex=False)
+            except:
+                continue
         return df
     
     def build_save_loc(self, path, safe_save=True):
