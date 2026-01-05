@@ -5,6 +5,7 @@ import pandas as pd
 from bs4 import BeautifulSoup
 from datetime import date
 from extractor import DIM_Players_Mixin, Table, Fact, BaseClasses, TableNotFound
+import extractor
 from Exporter import Export_Manager
 import logging
 import json
@@ -292,105 +293,119 @@ class SalaryTable(Fact):
 
 class Season(Season_Mixins):
     def __init__(self,htmls,settings):
-        self.settings = settings
-        self.htmls = htmls
-        logging.info(f'Starting process for the {settings.year} NFL Season.\n\n')
+        try:
+            self.settings = settings
+            self.htmls = htmls
+            logging.info(f'Starting process for the {settings.year} NFL Season.\n\n')
 
-        if settings.end_week>18:
-            logging.debug('End week cannot be greater than 18- setting to 18.')
-            settings.end_week=18
+            if settings.end_week>18:
+                logging.debug('End week cannot be greater than 18- setting to 18.')
+                settings.end_week=18
 
-        settings.end_week+=1 #ensures users can specify their actual desired endweek. no need to understand how the Range loop works
+            settings.end_week+=1 #ensures users can specify their actual desired endweek. no need to understand how the Range loop works
 
-        exporter=Export_Manager('Dashboards_Test',save_method='excel',safe_save=True)
+            exporter=Export_Manager(f'Dashboards/{settings.year}',save_method='csv',safe_save=True)
 
-        start_week=settings.start_week
-        end_week=settings.end_week
+            start_week=settings.start_week
+            end_week=settings.end_week
 
-        if settings.scrape_rosters is True:
-            logging.debug('Extracting player tables...')
-            Players=DIM_Players(settings.year,htmls)
-            self.teamref=Players.df
+            if settings.scrape_rosters is True:
+                logging.debug('Extracting player tables...')
+                Players=DIM_Players(settings.year,htmls)
+                self.teamref=Players.df
 
-        week_objs=[]
+            week_objs=[]
 
-        if settings.scrape_teams is True:
-            teamrows=[]
-            for team in teams:
-                teamobj=Team(team,htmls)
-                teamrows.append(teamobj.team_details)
-            dim_teams=pd.DataFrame(teamrows,columns=['Team','Name','Record','Pct','Head Coach','Offensive Coordinator','Defensive Coordinator','General Manager','Stadium'])
-            dim_teams['Team_Year']=dim_teams['Team']+f'_{settings.year}'
-            self.dim_teams=dim_teams
+            if settings.scrape_teams is True:
+                teamrows=[]
+                for team in teams:
+                    teamobj=Team(team,htmls)
+                    teamrows.append(teamobj.team_details)
+                dim_teams=pd.DataFrame(teamrows,columns=['Team','Name','Record','Pct','Head Coach','Offensive Coordinator','Defensive Coordinator','General Manager','Stadium'])
+                dim_teams['Team_Year']=dim_teams['Team']+f'_{settings.year}'
+                self.dim_teams=dim_teams
 
 
-        fact_stats_dfs=[]
-        fact_scores_dfs=[]
-        dim_games_dfs=[]
-        dim_score_details_dfs=[]
+            fact_stats_dfs=[]
+            fact_scores_dfs=[]
+            dim_games_dfs=[]
+            dim_score_details_dfs=[]
 
-        # salary stuff goes here
-        
-        self.team_dfs=[]
-
-        #for team in htmls.salary_htmls:
-            #salary_table=SalaryTable(htmls.salary_htmls[team])
-            #salary_table.df['Team']=team
-            #self.team_dfs.append(salary_table.df)
-
-        #self.salary_df=pd.concat(self.team_dfs)
-
-        #print(self.salary_df)
-
-        self.teamref['Tm']=self.teamref['Team'].drop(columns=['Team'])
-
-        #self.salary_df=extractor.apply_alias(self.salary_df,aliases,'Player')
-        #self.salary_df=extractor.sub_dim_id(self.salary_df,self.teamref.copy(),{'Player':'Name','Team':'Tm'},'Player_ID','Player')
-
-        for week in range(start_week,end_week):
-            logging.info(f'Starting week {week}...')
-            try:
-                week_htmls=self.htmls.week_htmls[week]
-            except KeyError:
-                week_htmls=self.htmls.week_htmls[str(week)]
+            # salary stuff goes here
             
-            if week==1:
-                last_week=None
-            else:
-                last_week=week_objs[week-2]
-            week_obj=Week(week,settings.year,week_htmls,self.teamref,last_week)
-            week_objs.append(week_obj)
-            fact_stats_dfs.append(week_obj.fact_stats)
-            fact_scores_dfs.append(week_obj.scoring_df)
-            dim_games_dfs.append(week_obj.games_df)
-            dim_score_details_dfs.append(week_obj.score_details_df)
-            
-        self.teamref.drop(columns=['Team'],inplace=True)
-        self.teamref=self.teamref.drop_duplicates(subset=['Player_ID'])
+            self.team_dfs=[]
 
-        fact_stats=pd.concat(fact_stats_dfs)
-        fact_stats['Tm']=fact_stats['Tm'].astype(str)+f'_{settings.year}'
-        fact_scoring=pd.concat(fact_scores_dfs)
-        self.dim_games=pd.concat(dim_games_dfs)
-        dim_score_details=pd.concat(dim_score_details_dfs)
+            #for team in htmls.salary_htmls:
+                #salary_table=SalaryTable(htmls.salary_htmls[team])
+                #salary_table.df['Team']=team
+                #self.team_dfs.append(salary_table.df)
 
-        self.add_soo_sov(self.dim_games,self.dim_teams)
+            #self.salary_df=pd.concat(self.team_dfs)
 
-        priority=['Team_Year','Team','Name','Record','Pct','SoS','SoV']
-        cols=priority+[c for c in self.dim_teams.columns if c not in priority]
-        self.dim_teams=self.dim_teams[cols]
+            #print(self.salary_df)
 
-        export_dic={
-            'FACT_Stats':fact_stats,
-            'FACT_Scoring':fact_scoring,
-            'DIM_Games':self.dim_games,
-            'DIM_Score_Details':dim_score_details,
-            'DIM_Players':self.teamref,
-            'DIM_Teams':self.dim_teams,
-            #'FACT_Salaries':self.salary_df
-        }
+            self.teamref['Tm']=self.teamref['Team'].drop(columns=['Team'])
 
-        exporter.export(export_dic)
+            #self.salary_df=extractor.apply_alias(self.salary_df,aliases,'Player')
+            #self.salary_df=extractor.sub_dim_id(self.salary_df,self.teamref.copy(),{'Player':'Name','Team':'Tm'},'Player_ID','Player')
+
+            for week in range(start_week,end_week):
+                logging.info(f'Starting week {week}...')
+                try:
+                    week_htmls=self.htmls.week_htmls[week]
+                except KeyError:
+                    week_htmls=self.htmls.week_htmls[str(week)]
+
+                self.fact_penalty_dfs=[]
+                self.penalty_detail_dfs=[]
+                
+                if week==1:
+                    last_week=None
+                else:
+                    last_week=week_objs[week-2]
+                week_obj=Week(week,settings.year,week_htmls,self.teamref,last_week)
+                week_objs.append(week_obj)
+                fact_stats_dfs.append(week_obj.fact_stats)
+                fact_scores_dfs.append(week_obj.scoring_df)
+                dim_games_dfs.append(week_obj.games_df)
+                dim_score_details_dfs.append(week_obj.score_details_df)
+                self.fact_penalty_dfs.append(week_obj.penalties_df)
+                self.penalty_detail_dfs.append(week_obj.penalty_details_df)
+                
+            self.teamref.drop(columns=['Team'],inplace=True)
+            self.teamref=self.teamref.drop_duplicates(subset=['Player_ID'])
+
+            fact_stats=pd.concat(fact_stats_dfs)
+            fact_stats['Tm']=fact_stats['Tm'].astype(str)+f'_{settings.year}'
+            fact_scoring=pd.concat(fact_scores_dfs)
+            self.dim_games=pd.concat(dim_games_dfs)
+            dim_score_details=pd.concat(dim_score_details_dfs)
+            fact_penalties=pd.concat(self.fact_penalty_dfs)
+            dim_penalty_details=pd.concat(self.penalty_detail_dfs)
+
+            self.add_soo_sov(self.dim_games,self.dim_teams)
+
+            priority=['Team_Year','Team','Name','Record','Pct','SoS','SoV']
+            cols=priority+[c for c in self.dim_teams.columns if c not in priority]
+            self.dim_teams=self.dim_teams[cols]
+
+            export_dic={
+                'FACT_Stats':fact_stats,
+                'FACT_Scoring':fact_scoring,
+                'DIM_Games':self.dim_games,
+                'DIM_Score_Details':dim_score_details,
+                'DIM_Players':self.teamref,
+                'DIM_Teams':self.dim_teams,
+                'FACT_Penalties':fact_penalties,
+                'DIM_Penalty_Details':dim_penalty_details
+                #'FACT_Salaries':self.salary_df
+            }
+
+            exporter.export(export_dic)
+
+        finally:
+            print('\ncumdump\n')
+            exporter.close()
 
     def add_soo_sov(self,games_table,teams_table):
         merged=games_table.merge(
@@ -442,11 +457,13 @@ class Week(Fact):
         self.dfs={
             'fact':{
                 'stats':[],
-                'scoring':[]
+                'scoring':[],
+                'penalties':[]
             },
             'dimension':{
                 'games':[],
-                'score_details':[]
+                'score_details':[],
+                'penalty_details':[]
             }
         }
         for i,html in enumerate(htmls,start=1):
@@ -455,9 +472,14 @@ class Week(Fact):
             self.dfs['fact']['stats'].append(game_obj.stats.df)
             self.dfs['dimension']['games'].append(game_obj.game.df)
             self.dfs['dimension']['score_details'].append(game_obj.scoring.dimension_df)
+            self.dfs['fact']['penalties'].append(game_obj.penalties.fact)
+            self.dfs['dimension']['penalty_details'].append(game_obj.penalties.dimension)
 
         self.scoring_df=pd.concat(self.dfs['fact']['scoring'])
         self.score_details_df=pd.concat(self.dfs['dimension']['score_details'])
+
+        self.penalties_df=pd.concat(self.dfs['fact']['penalties'])
+        self.penalty_details_df=pd.concat(self.dfs['dimension']['penalty_details'])
 
         games_df=pd.concat(self.dfs['dimension']['games'])
         stats_df=pd.concat(self.dfs['fact']['stats'])
@@ -516,15 +538,104 @@ class Week(Fact):
 
 # functions
 
-class Game:
+class Game(Fact):
     def __init__(self,week_id,index,html,roster_table,week,year):
         soup=BeautifulSoup(html,'html.parser')
         if len(str(index))==1:
             index=f'0{index}'
+
+        scorebox=soup.find('div',class_='scorebox')
+        self.sects=scorebox.find_all('strong')
+
+        away_team_box=self.sects[0]
+        away_team=away_team_box.get_text().strip()
+
+        home_team_box=self.sects[2]
+        home_team=home_team_box.get_text().strip()
+
+        self.home_team_key= teams[home_team]['abbr'].upper()
+        self.away_team_key=teams[away_team]['abbr'].upper()
+
+        self.team_keys={'home':self.home_team_key,'away':self.away_team_key}
+
         self.game_id=f'{index}{week_id}'
+        self.game_rosters=self.construct_gameday_roster(soup)
         self.scoring=Scoring_Tables(soup,self.game_id,roster_table)
         self.game=DIM_Games(soup,self.game_id,week,year)
         self.stats=Fact_Stats(self.game_id,soup,roster_table,self.game.df)
+        self.penalties=FACT_Penalties(soup,self.game_id,self.game_rosters)
+        self.penalties.fact=extractor.sub_dim_id(self.penalties.fact,roster_table,{'Player':'Name','Team':'Tm'},'Player_ID','Player')
+        self.penalties.fact=self.penalties.fact[['Penalty_ID','Player','Team','penalty','Metric','Value']]
+
+    def construct_gameday_roster(self,soup):
+        dic_ref={'vis':self.away_team_key,'home':self.home_team_key,}
+        dfs={'home':None,'vis':None}
+        category=Gameday_Roster
+        for k,v in category.__dict__.items():
+            if not k.startswith('__'):
+                setattr(self,k,v)
+        base_id='_snap_counts'
+        for team in dic_ref:
+            category.id=f'{team}{base_id}'
+            super().__init__(category,soup)
+            dfs[team]=self.df
+        dfs['away']=dfs.pop('vis')
+        roster_dfs=[]
+        for team in dfs:
+            df=dfs[team]
+            df['Team']=self.team_keys[team]
+            roster_dfs.append(df)
+        game_day_rosters=pd.concat(roster_dfs)
+        game_day_rosters=game_day_rosters[['Player','Team']]
+        return game_day_rosters
+
+class Game_Log(BaseClasses.html):
+    id='pbp'
+    expected_cols={'Quarter':np.int64,'Time':object,'Down':np.int64,'ToGo':np.int64,'Location':object,'Detail':object}
+    cat='penalties'
+
+class Gameday_Roster(BaseClasses.html):
+    id='_snap_counts'
+    expected_cols={'Player':object,'Pos':object,'Num':np.int64,'Pct':np.float64}
+    cat='gameday_roster'
+
+class FACT_Penalties(Fact):
+    def __init__(self,soup,game_id,roster):
+        category=Game_Log
+        for k,v in category.__dict__.items():
+            if not k.startswith('__'):
+                setattr(self,k,v)
+        super().__init__(category,soup)
+
+        penalties_table=self.create_penalty_table()
+        penalties_table.reset_index(inplace=True,drop=True)
+        penalties_table['Penalty_ID']=game_id+'_P'+(penalties_table.index.astype(int)+1).astype(str)
+        self.dimension=penalties_table[['Penalty_ID','Player','Time','Location','accepted','Down','Quarter']]
+        self.fact_penalties=penalties_table[['Penalty_ID','Player','ToGo','penalty','yards_lost','accepted','EPB','EPA','EPA_Change']]
+        fact=penalties_table[['Penalty_ID','Player','ToGo','penalty','yards_lost','EPB','EPA','EPA_Change']]
+        self.fact_penalties=fact.melt(id_vars=['Penalty_ID','Player','penalty'],var_name='Metric',value_name='Value')
+        self.fact_penalties['Value']=self.fact_penalties['Value'].replace('None',0)
+        self.fact=self.fact_penalties.merge(
+            roster,
+            on='Player',
+            how='left'
+        )
+
+    def create_penalty_table(self):
+        self.df=self.df[self.df['Detail'].str.contains('penalty', case=False, na=False)]
+        self.df['Detail']=self.df['Detail'].str.split('Penalty on', n=1).str[1].str.strip()
+        self.df[['Player','info']]=self.df['Detail'].str.split(':', n=1, expand=True)
+        split=self.df['info'].str.split(',', n=1, expand=True)
+        self.df['penalty']=split[0].str.strip()
+        self.df['other']=split[1].str.strip() if 1 in split.columns else None
+        split=self.df['other'].str.split('yards', n=1, expand=True)
+        self.df['yards_lost']=split[0].str.strip()
+        self.df['other']=split[1].str.strip() if 1 in split.columns else None
+        self.df['accepted']=~self.df['other'].str.contains('declined', case=False, na=False)
+        self.df.drop(columns=['other'],inplace=True)
+        self.df['EPA_Change']=self.df['EPB'].astype(float)-self.df['EPA'].astype(float)
+        self.df=self.df[['Player','Quarter','Time','Down','ToGo','Location','penalty','yards_lost','accepted','EPB','EPA','EPA_Change']]
+        return self.df.copy()
 
 class DIM_Games(Season_Mixins):
     def __init__(self,soup,game_id,week,year):
@@ -1200,9 +1311,7 @@ class Players_Table(Table):
         starters=self.get_starters()
         self.base_roster['Starter']=self.base_roster['Player'].isin(starters)
         self.base_roster['Player']=self.base_roster['Player'].str.replace(r'\s*\(.*?\)', '', regex=True)
-        if team==['BUF']:
-            print(self.base_roster)
-    
+
     def get_starters(self):
         try:
             super().__init__(Starters,self.soup)
@@ -1267,5 +1376,3 @@ class Scraper_Settings:
         self.scrape_games=games
         self.start_week=start_week
         self.end_week=end_week
-
-merge_dashboards()
