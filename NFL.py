@@ -208,11 +208,12 @@ class Team(Table,Season_Mixins):
         setattr(self, 'Record', record)
         setattr(self, 'Pct', pct)
 
-def run_pipeline(year):
+def run_pipeline(year,html_method='scrape'):
     logging.info('Initializing pipeline...\n')
     settings=default_pipeline_settings
     settings.year=year
-    htmls=HTML_Layer(settings)
+    if html_method=='scrape':
+        htmls=HTML_Layer(settings)
     obj=Season(htmls,settings)
     #merge_dashboards()
     return
@@ -303,7 +304,7 @@ class Season(Season_Mixins):
 
             settings.end_week+=1 #ensures users can specify their actual desired endweek. no need to understand how the Range loop works
 
-            exporter=Export_Manager(f'Dashboards/{settings.year}',save_method='csv',safe_save=True)
+            exporter=Export_Manager(f'Dashboards/{settings.year}.xlsx',save_method='excel',safe_save=True)
 
             start_week=settings.start_week
             end_week=settings.end_week
@@ -348,29 +349,9 @@ class Season(Season_Mixins):
 
             self.salary_df=pd.concat(self.team_dfs)
             self.salary_df=extractor.apply_alias(self.salary_df,alias_df,'Player')
-            self.salary_df['stand_in']='NA'
+            self.salary_df=self.salary_df.rename(columns={'Team':'Tm'})
 
-            self.salary_df.rename(columns={'Team':'Tm'},inplace=True)
-
-            self.salary_df=extractor.sub_dim_id(self.salary_df,self.teamref,{'Player':'Name','Tm':'Team'},'Player_ID',replace_col='stand_in')
-            self.alias_needed=self.salary_df[['Player','stand_in','Tm']]
-
-            self.alias_needed = (
-            self.alias_needed[self.alias_needed['stand_in'].isna()]
-            .drop_duplicates(subset='Player')
-            )
-
-            self.alias_needed=extractor.sub_dim_id(self.alias_needed,self.teamref,{'Player':'Name'},'Team','Tm')
-            self.alias_needed=extractor.sub_dim_id(self.alias_needed,self.teamref,{'Player':'Name','Tm':'Team'},'Player_ID',replace_col='stand_in')
-            self.alias_needed = self.alias_needed[self.alias_needed['stand_in'].isna()]
-            self.alias_needed.reset_index(drop=True, inplace=True)
-
-            print(self.alias_needed)
-
-            return
-
-            #self.salary_df=extractor.apply_alias(self.salary_df,aliases,'Player')
-            #self.salary_df=extractor.sub_dim_id(self.salary_df,self.teamref.copy(),{'Player':'Name','Team':'Tm'},'Player_ID','Player')
+            self.salary_df=extractor.sub_dim_id(self.salary_df,self.teamref,{'Player':'Name','Tm':'Team'},'Player_ID','Player')
 
             for week in range(start_week,end_week):
                 logging.info(f'Starting week {week}...')
@@ -420,11 +401,9 @@ class Season(Season_Mixins):
                 'DIM_Players':self.teamref,
                 'DIM_Teams':self.dim_teams,
                 'FACT_Penalties':fact_penalties,
-                'DIM_Penalty_Details':dim_penalty_details
-                #'FACT_Salaries':self.salary_df
+                'DIM_Penalty_Details':dim_penalty_details,
+                'FACT_Salaries':self.salary_df
             }
-
-            return
 
             exporter.export(export_dic)
 
@@ -588,8 +567,9 @@ class Game(Fact):
         self.game=DIM_Games(soup,self.game_id,week,year)
         self.stats=Fact_Stats(self.game_id,soup,roster_table,self.game.df)
         self.penalties=FACT_Penalties(soup,self.game_id,self.game_rosters)
-        self.penalties.fact=extractor.sub_dim_id(self.penalties.fact,roster_table,{'Player':'Name','Team':'Tm'},'Player_ID','Player')
-        self.penalties.fact=self.penalties.fact[['Penalty_ID','Player','Team','penalty','Metric','Value']]
+        self.penalties.fact=self.penalties.fact.rename(columns={'Team':'Tm'})
+        self.penalties.fact=extractor.sub_dim_id(self.penalties.fact,roster_table,{'Player':'Name','Tm':'Team'},'Player_ID','Player')
+        self.penalties.fact=self.penalties.fact[['Penalty_ID','Player','Tm','penalty','Metric','Value']]
 
     def construct_gameday_roster(self,soup):
         dic_ref={'vis':self.away_team_key,'home':self.home_team_key,}
