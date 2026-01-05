@@ -120,7 +120,6 @@ class HTML_Layer:
         with open(f"{base_path}week_htmls.txt", "w", encoding="utf-8") as f:
             json.dump(self.week_htmls, f, ensure_ascii=False)
 
-    
     def extract_teams(self):
         for team in teams:
             logging.info(f'Scraping {team}...\n')
@@ -335,16 +334,40 @@ class Season(Season_Mixins):
             
             self.team_dfs=[]
 
-            #for team in htmls.salary_htmls:
-                #salary_table=SalaryTable(htmls.salary_htmls[team])
-                #salary_table.df['Team']=team
-                #self.team_dfs.append(salary_table.df)
+            path = r'C:\Users\19495\OneDrive\Documents\Python\SalarySmart\secrets\aliases.json'
 
-            #self.salary_df=pd.concat(self.team_dfs)
+            with open(path, 'r', encoding='utf-8') as f:
+                aliases_dict = json.load(f)
 
-            #print(self.salary_df)
+            alias_df = pd.DataFrame(aliases_dict)
 
-            self.teamref['Tm']=self.teamref['Team'].drop(columns=['Team'])
+            for team in htmls.salary_htmls:
+                salary_table=SalaryTable(htmls.salary_htmls[team])
+                salary_table.df['Team']=team
+                self.team_dfs.append(salary_table.df)
+
+            self.salary_df=pd.concat(self.team_dfs)
+            self.salary_df=extractor.apply_alias(self.salary_df,alias_df,'Player')
+            self.salary_df['stand_in']='NA'
+
+            self.salary_df.rename(columns={'Team':'Tm'},inplace=True)
+
+            self.salary_df=extractor.sub_dim_id(self.salary_df,self.teamref,{'Player':'Name','Tm':'Team'},'Player_ID',replace_col='stand_in')
+            self.alias_needed=self.salary_df[['Player','stand_in','Tm']]
+
+            self.alias_needed = (
+            self.alias_needed[self.alias_needed['stand_in'].isna()]
+            .drop_duplicates(subset='Player')
+            )
+
+            self.alias_needed=extractor.sub_dim_id(self.alias_needed,self.teamref,{'Player':'Name'},'Team','Tm')
+            self.alias_needed=extractor.sub_dim_id(self.alias_needed,self.teamref,{'Player':'Name','Tm':'Team'},'Player_ID',replace_col='stand_in')
+            self.alias_needed = self.alias_needed[self.alias_needed['stand_in'].isna()]
+            self.alias_needed.reset_index(drop=True, inplace=True)
+
+            print(self.alias_needed)
+
+            return
 
             #self.salary_df=extractor.apply_alias(self.salary_df,aliases,'Player')
             #self.salary_df=extractor.sub_dim_id(self.salary_df,self.teamref.copy(),{'Player':'Name','Team':'Tm'},'Player_ID','Player')
@@ -401,10 +424,11 @@ class Season(Season_Mixins):
                 #'FACT_Salaries':self.salary_df
             }
 
+            return
+
             exporter.export(export_dic)
 
         finally:
-            print('\ncumdump\n')
             exporter.close()
 
     def add_soo_sov(self,games_table,teams_table):
