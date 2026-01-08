@@ -226,7 +226,7 @@ class Fact(Table):
     def summerge(self,merged_df): #pass a pre-merged df into this. Does not have merging logic since it's very context-dependent
         calc_cols=self.convert_col_names(merged_df)
         for col in calc_cols:
-            merged_df[col]=merged_df[f'{col}_x'].astype(int)+merged_df[f'{col}_y'].astype(int)
+            merged_df[col]=merged_df[f'{col}_x']+merged_df[f'{col}_y']
             merged_df.drop(columns=[f'{col}_x',f'{col}_y'],inplace=True)
         return merged_df 
 
