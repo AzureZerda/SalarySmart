@@ -1,9 +1,9 @@
 import re
+from datetime import datetime
 from abc import ABC, ABCMeta
 import numpy as np
 import pandas as pd
 from bs4 import BeautifulSoup
-from datetime import date
 from extractor import DIM_Players_Mixin, Table, Fact, BaseClasses, TableNotFound
 import extractor
 from Exporter import Export_Manager
@@ -219,16 +219,22 @@ def run_pipeline(year,html_method='scrape'):
     return
 
 def merge_dashboards():
-    sheets={'FACT_Stats':[],'DIM_Games':[],'DIM_Players':[],'DIM_Teams':[]}
-    for file in Path('Dashboards').iterdir():
+    years=['2024','2025']
+    sheets={'FACT_Stats':[],'FACT_Scoring':[],'FACT_Salaries':[],'FACT_Penalties':[],'DIM_Games':[],'DIM_Players':[],'DIM_Teams':[],'DIM_Penalty_Details':[],'DIM_Score_Details':[]}
+    merged={'FACT_Stats':[],'FACT_Scoring':[],'FACT_Salaries':[],'FACT_Penalties':[],'DIM_Games':[],'DIM_Players':[],'DIM_Teams':[],'DIM_Penalty_Details':[],'DIM_Score_Details':[]}
+    for year in years:
+        path=f'C:\\Users\\19495\\OneDrive\\Documents\\Python\\SalarySmart\\Dashboards\\{year}\\'
         for page in sheets:
-            df=pd.read_excel(file,sheet_name=page)
+            file=f'{path}{page}.csv'
+            df=pd.read_csv(file)
             sheets[page].append(df)
-        
-    with pd.ExcelWriter('Dashboards/Full.xlsx',mode='w') as writer:
-        for page in sheets:
-            merged=pd.concat(sheets[page])
-            merged.to_excel(writer,index=False,sheet_name=page)
+
+    for sheet in sheets:
+        merged_df=pd.concat(sheets[sheet])
+        merged[sheet]=merged_df
+    
+    exporter=Export_Manager('C:\\Users\\19495\\OneDrive\\Documents\\Python\\SalarySmart\\Dashboards\\Full\\')
+    exporter.export(merged)
             
 class SalaryTable(Fact):
     def __init__(self,html):
@@ -304,7 +310,7 @@ class Season(Season_Mixins):
 
             settings.end_week+=1 #ensures users can specify their actual desired endweek. no need to understand how the Range loop works
 
-            exporter=Export_Manager(f'Dashboards/{settings.year}.xlsx',save_method='excel',safe_save=True)
+            exporter=Export_Manager(f'Dashboards/{settings.year}',save_method='csv',safe_save=True)
 
             start_week=settings.start_week
             end_week=settings.end_week
@@ -351,6 +357,9 @@ class Season(Season_Mixins):
             self.salary_df=extractor.apply_alias(self.salary_df,alias_df,'Player')
             self.salary_df=self.salary_df.rename(columns={'Team':'Tm'})
 
+            self.fact_penalty_dfs=[]
+            self.penalty_detail_dfs=[]
+
             self.salary_df=extractor.sub_dim_id(self.salary_df,self.teamref,{'Player':'Name','Tm':'Team'},'Player_ID','Player')
 
             for week in range(start_week,end_week):
@@ -359,9 +368,6 @@ class Season(Season_Mixins):
                     week_htmls=self.htmls.week_htmls[week]
                 except KeyError:
                     week_htmls=self.htmls.week_htmls[str(week)]
-
-                self.fact_penalty_dfs=[]
-                self.penalty_detail_dfs=[]
                 
                 if week==1:
                     last_week=None
@@ -385,6 +391,7 @@ class Season(Season_Mixins):
             self.dim_games=pd.concat(dim_games_dfs)
             dim_score_details=pd.concat(dim_score_details_dfs)
             fact_penalties=pd.concat(self.fact_penalty_dfs)
+            fact_penalties["Value"]=fact_penalties["Value"].astype(float)
             dim_penalty_details=pd.concat(self.penalty_detail_dfs)
 
             self.add_soo_sov(self.dim_games,self.dim_teams)
@@ -393,6 +400,8 @@ class Season(Season_Mixins):
             cols=priority+[c for c in self.dim_teams.columns if c not in priority]
             self.dim_teams=self.dim_teams[cols]
 
+            fact_stats = fact_stats.replace([float('inf'), -float('inf')], 0)
+
             export_dic={
                 'FACT_Stats':fact_stats,
                 'FACT_Scoring':fact_scoring,
@@ -400,9 +409,9 @@ class Season(Season_Mixins):
                 'DIM_Score_Details':dim_score_details,
                 'DIM_Players':self.teamref,
                 'DIM_Teams':self.dim_teams,
-                'FACT_Penalties':fact_penalties,
                 'DIM_Penalty_Details':dim_penalty_details,
-                'FACT_Salaries':self.salary_df
+                'FACT_Salaries':self.salary_df,
+                'FACT_Penalties':fact_penalties
             }
 
             exporter.export(export_dic)
@@ -503,7 +512,7 @@ class Week(Fact):
             self.sum_season_stats([last_week.season_sum,stats_df])
         
         self.fact_stats=pd.concat([self.season_sum,stats_df])
-        
+
     def sum_season_stats(self,df_list):
         merged_dfs=[]
         for cat in Stat_Cat.registry:
@@ -566,7 +575,7 @@ class Game(Fact):
         self.scoring=Scoring_Tables(soup,self.game_id,roster_table)
         self.game=DIM_Games(soup,self.game_id,week,year)
         self.stats=Fact_Stats(self.game_id,soup,roster_table,self.game.df)
-        self.penalties=FACT_Penalties(soup,self.game_id,self.game_rosters)
+        self.penalties=FACT_Penalties(soup,self.game_id,self.game_rosters,self.team_keys)
         self.penalties.fact=self.penalties.fact.rename(columns={'Team':'Tm'})
         self.penalties.fact=extractor.sub_dim_id(self.penalties.fact,roster_table,{'Player':'Name','Tm':'Team'},'Player_ID','Player')
         self.penalties.fact=self.penalties.fact[['Penalty_ID','Player','Tm','penalty','Metric','Value']]
@@ -604,7 +613,7 @@ class Gameday_Roster(BaseClasses.html):
     cat='gameday_roster'
 
 class FACT_Penalties(Fact):
-    def __init__(self,soup,game_id,roster):
+    def __init__(self,soup,game_id,roster,teams):
         category=Game_Log
         for k,v in category.__dict__.items():
             if not k.startswith('__'):
@@ -627,6 +636,7 @@ class FACT_Penalties(Fact):
 
     def create_penalty_table(self):
         self.df=self.df[self.df['Detail'].str.contains('penalty', case=False, na=False)]
+        self.df["Detail"]=self.df["Detail"].str.replace(r"\byard\b", "yards", regex=True)
         self.df['Detail']=self.df['Detail'].str.split('Penalty on', n=1).str[1].str.strip()
         self.df[['Player','info']]=self.df['Detail'].str.split(':', n=1, expand=True)
         split=self.df['info'].str.split(',', n=1, expand=True)
@@ -637,7 +647,7 @@ class FACT_Penalties(Fact):
         self.df['other']=split[1].str.strip() if 1 in split.columns else None
         self.df['accepted']=~self.df['other'].str.contains('declined', case=False, na=False)
         self.df.drop(columns=['other'],inplace=True)
-        self.df['EPA_Change']=self.df['EPB'].astype(float)-self.df['EPA'].astype(float)
+        self.df['EPA_Change']=self.df['EPA'].astype(float)-(self.df['EPB'].astype(float))
         self.df=self.df[['Player','Quarter','Time','Down','ToGo','Location','penalty','yards_lost','accepted','EPB','EPA','EPA_Change']]
         return self.df.copy()
 
@@ -678,6 +688,10 @@ class DIM_Games(Season_Mixins):
         game_details_list=game_details_area.find_all('div')
 
         self.extract_from_html_list(game_details_list,Game_Details)
+
+        self.game_date=self.game_date.split(" ",1)[1]
+
+        self.game_date=datetime.strptime(self.game_date, "%b %d, %Y").strftime("%Y-%m-%d")
 
         game_info_box=soup.find('table',id='game_info')
         
@@ -1380,3 +1394,5 @@ class Scraper_Settings:
         self.scrape_games=games
         self.start_week=start_week
         self.end_week=end_week
+
+merge_dashboards()
