@@ -78,7 +78,6 @@ class export_as_excel:
         df.to_excel(self.writer,sheet_name=name,index=False)
     
     def close(self):
-        print('\nskibbidi\n')
         self.writer.close()
 
 class export_as_csv:
@@ -89,11 +88,11 @@ class export_as_csv:
         df=self.validate_export(df)
         df.to_csv(f'{self.path}\{name}.csv',index=False)
     
-    def validate_export(self,df):
-        for col in df.columns:
+    def validate_export(self, df):
+        for col in df.select_dtypes(include="object").columns:
             try:
                 df[col]=df[col].str.replace(',', '/', regex=False)
-            except:
+            except AttributeError:
                 continue
         return df
     
