@@ -362,6 +362,8 @@ class Season(Season_Mixins):
 
             self.salary_df=extractor.sub_dim_id(self.salary_df,self.teamref,{'Player':'Name','Tm':'Team'},'Player_ID','Player')
 
+            print(end_week)
+
             for week in range(start_week,end_week):
                 logging.info(f'Starting week {week}...')
                 try:
@@ -382,7 +384,7 @@ class Season(Season_Mixins):
                 self.fact_penalty_dfs.append(week_obj.penalties_df)
                 self.penalty_detail_dfs.append(week_obj.penalty_details_df)
                 
-            self.teamref.drop(columns=['Team'],inplace=True)
+            self.teamref.rename(columns={'Team':'Tm'},inplace=True)
             self.teamref=self.teamref.drop_duplicates(subset=['Player_ID'])
 
             fact_stats=pd.concat(fact_stats_dfs)
@@ -401,6 +403,8 @@ class Season(Season_Mixins):
             self.dim_teams=self.dim_teams[cols]
 
             fact_stats = fact_stats.replace([float('inf'), -float('inf')], 0)
+
+            self.dim_games['Week']=self.dim_games['Week'].astype(int)
 
             export_dic={
                 'FACT_Stats':fact_stats,
@@ -614,6 +618,7 @@ class Gameday_Roster(BaseClasses.html):
 
 class FACT_Penalties(Fact):
     def __init__(self,soup,game_id,roster,teams):
+        self.game_id=game_id
         category=Game_Log
         for k,v in category.__dict__.items():
             if not k.startswith('__'):
@@ -623,7 +628,7 @@ class FACT_Penalties(Fact):
         penalties_table=self.create_penalty_table()
         penalties_table.reset_index(inplace=True,drop=True)
         penalties_table['Penalty_ID']=game_id+'_P'+(penalties_table.index.astype(int)+1).astype(str)
-        self.dimension=penalties_table[['Penalty_ID','Player','Time','Location','accepted','Down','Quarter']]
+        self.dimension=penalties_table[['Penalty_ID','Player','Time','Location','accepted','Down','Quarter','Game']]
         self.fact_penalties=penalties_table[['Penalty_ID','Player','ToGo','penalty','yards_lost','accepted','EPB','EPA','EPA_Change']]
         fact=penalties_table[['Penalty_ID','Player','ToGo','penalty','yards_lost','EPB','EPA','EPA_Change']]
         self.fact_penalties=fact.melt(id_vars=['Penalty_ID','Player','penalty'],var_name='Metric',value_name='Value')
@@ -646,9 +651,10 @@ class FACT_Penalties(Fact):
         self.df['yards_lost']=split[0].str.strip()
         self.df['other']=split[1].str.strip() if 1 in split.columns else None
         self.df['accepted']=~self.df['other'].str.contains('declined', case=False, na=False)
+        self.df['Game']=self.game_id
         self.df.drop(columns=['other'],inplace=True)
         self.df['EPA_Change']=self.df['EPA'].astype(float)-(self.df['EPB'].astype(float))
-        self.df=self.df[['Player','Quarter','Time','Down','ToGo','Location','penalty','yards_lost','accepted','EPB','EPA','EPA_Change']]
+        self.df=self.df[['Player','Game','Quarter','Time','Down','ToGo','Location','penalty','yards_lost','accepted','EPB','EPA','EPA_Change']]
         return self.df.copy()
 
 class DIM_Games(Season_Mixins):
@@ -1368,6 +1374,7 @@ class DIM_Players(DIM_Players_Mixin):
         for col in ['Player_ID','Player','Team_ID','Year_ID'][::-1]:
             cols.insert(0, cols.pop(cols.index(col)))
         self.df = self.df[cols]
+        self.df['Year']=year
 
         logging.debug(self.df)
 
@@ -1395,4 +1402,4 @@ class Scraper_Settings:
         self.start_week=start_week
         self.end_week=end_week
 
-merge_dashboards()
+#merge_dashboards()
