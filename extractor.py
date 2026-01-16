@@ -200,20 +200,24 @@ class Table: # note for review- this class should never be directly inherited.
         if leftover_cols:
             logging.warning(f'Shapecheck succeeded, however there are more columns than expected. Unexpected columns: {leftover_cols}. These will be retained.')
 
-    def typecheck(self):
-        for col in self.df.columns:
-            expectedtype=self.expected_cols[col]
-            actualtype=self.df[col].dtypes
+    def typecheck(self,df,expected_cols,strict=True):
+        logging.debug(df)
+        for col in expected_cols:
+            expectedtype=expected_cols[col]
+            actualtype=df[col].dtypes
             if expectedtype==actualtype:
                 logging.debug('Typecheck succeeded')
                 continue
             else:
                 logging.debug(f'{col} failed typecheck. Expected type: {expectedtype}. Actual type: {actualtype}. Attempting conversion...')
                 try:
-                    self.df[col]=self.df[col].astype(expectedtype)
-                    logging.debug('Successfully converted to expected type.')
-                except Exception as e:
-                    logging.error(f'Unable to convert{col}- {e}')
+                    df[col]=df[col].astype(expectedtype)
+                except ValueError:
+                    if strict:
+                        raise ValueError
+                    logging.error(f'Column {col} could not be converted to type {expectedtype}')
+                logging.debug('Successfully converted to expected type.')
+        return df
 
     def clean_table(self):
         for col, rules in self.cleaning.items():
@@ -225,7 +229,9 @@ class Table: # note for review- this class should never be directly inherited.
 class Fact(Table):
     def summerge(self,merged_df): #pass a pre-merged df into this. Does not have merging logic since it's very context-dependent
         calc_cols=self.convert_col_names(merged_df)
+        #print(merged_df)
         for col in calc_cols:
+            #print(col)
             merged_df[col]=merged_df[f'{col}_x']+merged_df[f'{col}_y']
             merged_df.drop(columns=[f'{col}_x',f'{col}_y'],inplace=True)
         return merged_df 
@@ -259,7 +265,10 @@ class Fact(Table):
                 if calc=='sum':
                     self.df[col]=self.df[nestref[0]]+self.df[nestref[1]]
         logging.debug(f'After calculating, this is the table:\n\n{self.df}')
-        self.df=self.df[self.category.col_order]
+        try:
+            self.df=self.df[self.category.col_order]
+        except KeyError:
+            logging.warning('Missing columns in the intended order. Skipping re-ordering.')
 
     def long_now(self):
         logging.debug(f'Before lengthening, this is the dataframe:\n\n{self.df}')
