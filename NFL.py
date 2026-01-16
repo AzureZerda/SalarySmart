@@ -536,9 +536,7 @@ class Week(Fact):
                 merged.drop(columns=['Tm_x'],inplace=True)
                 merged.rename(columns={'Tm_y':'Tm'},inplace=True)
                 filtered_=self.summerge(merged)
-
-                #print(filtered_.head())
-
+                
                 for calc in cat.season_calcs:
                     if calc=='avg':
                         form=lambda a,b:a/(b.replace(0, np.nan))
@@ -1360,13 +1358,8 @@ class Defense_Table(Fact): #extension
 
 
     def sub_stat_ids(self):
-        print(repr(self.df['Stat'].unique()))
-        print(self.df['Stat'].unique())
         mapping_dict = dim_stats[self.category.cat]
         self.df['Stat'] = self.df['Stat'].map(mapping_dict)
-        print(self.df['Stat'].unique())
-        print('\nslimyy')
-
 # Dimension Tables
 
 # DIM_Players
