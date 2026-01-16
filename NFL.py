@@ -140,7 +140,7 @@ class HTML_Layer:
 
 class default_pipeline_settings:
     start_week=1
-    end_week=17
+    end_week=18
     scrape_rosters=True
     scrape_teams=True
     scrape_games=True
@@ -304,7 +304,7 @@ class Season(Season_Mixins):
             self.htmls = htmls
             logging.info(f'Starting process for the {settings.year} NFL Season.\n\n')
 
-            if settings.end_week>18:
+            if settings.end_week>19:
                 logging.debug('End week cannot be greater than 18- setting to 18.')
                 settings.end_week=18
 
@@ -361,8 +361,6 @@ class Season(Season_Mixins):
             self.penalty_detail_dfs=[]
 
             self.salary_df=extractor.sub_dim_id(self.salary_df,self.teamref,{'Player':'Name','Tm':'Team'},'Player_ID','Player')
-
-            print(end_week)
 
             for week in range(start_week,end_week):
                 logging.info(f'Starting week {week}...')
@@ -520,9 +518,12 @@ class Week(Fact):
     def sum_season_stats(self,df_list):
         merged_dfs=[]
         for cat in Stat_Cat.registry:
+       
                 dfs=[]
                 for df in df_list:
+                    df=df.dropna()
                     filtered_df = df[df['Stat'].str.startswith(cat.identifier)]
+                
                     filtered_df = filtered_df[filtered_df['Stat'].isin(cat.summary_stats)]
 
                     filtered_df.dropna(subset=['Player'],inplace=True)
@@ -536,9 +537,11 @@ class Week(Fact):
                 merged.rename(columns={'Tm_y':'Tm'},inplace=True)
                 filtered_=self.summerge(merged)
 
+                #print(filtered_.head())
+
                 for calc in cat.season_calcs:
                     if calc=='avg':
-                        form=lambda a,b:a/b
+                        form=lambda a,b:a/(b.replace(0, np.nan))
                     elif calc=='pct':
                         form=lambda a,b:(a/b)*100
                     elif calc=='rat':
@@ -728,7 +731,7 @@ class Fact_Stats: # orchestration
 
         for cat_cls in Stat_Cat.registry:
             if cat_cls.cat=='defense':
-                instance=Defense_Table(soup,cat_cls)
+                instance=Defense_Table(cat_cls,soup,roster_table)
             else:
                 instance=Stat_Table(soup,cat_cls,roster_table)
             dataframes.append(instance.df)
@@ -754,6 +757,7 @@ class Stat_Table(Fact):
         self.df=self.df[self.df['Player']!='Player'].infer_objects(copy=False).fillna(0)
         if hasattr(self, "cleaning"):
             self.clean_table()
+
         self.typecheck()
         self.calculate_values()
         self.long_now()
@@ -1137,13 +1141,16 @@ class Rushing(metaclass=Stat_Cat):
 
     season_vals=['R1','R2','R4','R5','R6','R8','R10','R3','R7','R9','R11']
 
-class Defense():
-    expected_cols={'Player':object,'Tm':object,'Int':np.int64,'int_Yds':np.int64,'int_TD':np.int64,'Lng':np.int64,'PD':np.int64,'Sk':np.float64,'Comb':np.int64,'Solo':np.int64,'Ast':np.int64,'TFL':np.int64,'QBHits':np.int64,'FR':np.int64,'Yds':np.int64,'TD':np.int64,'FF':np.int64}
-    value_vars=['Int','int_Yds','int_TD','Lng','PD','Sk','Comb','Solo','Ast','TFL','QBHits','FR','Yds','TD','FF','Tgt','Cmp','Cmp%','Yds','Yds/Cmp','Yds/Tgt','TD','Rat','DADOT','Air','YAC','Bltz','Hrry','QBKD','Sk','Prss','Comb','MTkl','MTkl%']
+class Defense(metaclass=Stat_Cat):
+    expected_cols={'Player':object,'Tm':object,'Int':np.int64,'int_Yds':np.int64,'int_TD':np.int64,'Lng':np.int64,'PD':np.int64,
+                   'Sk':np.float64,'Comb':np.int64,'Solo':np.int64,'Ast':np.int64,'TFL':np.int64,'QBHits':np.int64,'FR':np.int64,
+                   'Fmbl_Yds':np.int64,'Fmbl_TD':np.int64,'FF':np.int64}
+    value_vars=['Int','int_Yds','int_TD','Lng','PD','Sk','Comb','Solo','Ast','TFL','QBHits','FR','Fmbl_Yds','Fmbl_TD','FF','Tgt','Cmp',
+                'Cmp%','Yds_Allowed','Yds/Cmp','Yds/Tgt','TD_Allowed','Rat','DADOT','Air','YAC','Bltz','Hrry','QBKD','Prss','MTkl','MTkl%']
     col_order=['Player','Tm','Int','int_Yds','int_TD','Lng','PD','Sk','Comb','Solo','Ast','TFL','QBHits','FR','Yds','TD','FF','Tgt','Cmp','Cmp%','Yds','Yds/Cmp','Yds/Tgt','TD','Rat','DADOT','Air','YAC','Bltz','Hrry','QBKD','Sk','Prss','Comb','MTkl','MTkl%']
     id='player_defense'
     cat='defense'
-    identifier='d'
+    identifier='D'
     cleaning = {
         'Cmp%': [
             {'target': '%', 'replace_with': ''}
@@ -1166,11 +1173,11 @@ class Defense():
         'TFL':'D10',
         'QBHits':'D11',
         'FR':'D12',
-        'Yds':'D13',
-        'TD':'D14',
+        'Fmbl_Yds':'D13',
+        'Fmbl_TD':'D14',
         'FF':'D15',
         'Tgt':'D16',
-        'Cmp':'D17',
+        'Cmp_Allowed':'D17',
         'Cmp%':'D18',
         'Yds_Allowed':'D19',   
         'Yds/Cmp':'D20',
@@ -1189,8 +1196,7 @@ class Defense():
      }
 
     season_calcs={
-        'sum':['D1','D2','D3','D5','D6','D7','D8','D9','D10','D11','D12','D13','D14','D15','D16','D17','D19','D22','D23','D24','D25','D26','D27','D28','D29','D30','D31'],
-        'avg':{'D20':['D13','D17'],'D21':['D13','D16']},
+        'avg':{'D20':['D19','D17'],'D21':['D19','D16']},
         'pct':{'D18':['D17','D16'],}
         }
     summary_stats=['D1','D2','D3','D5','D6','D7','D8','D9','D10','D11','D12','D13','D14','D15','D16','D17','D19','D22','D23','D24','D25','D26','D27','D28','D29','D30','D31']
@@ -1199,9 +1205,17 @@ class Advanced_Defense(BaseClasses.html): # DO NOT add the stat_cat metaclass to
     id='defense_advanced'
 
     cols=['Player','Tm','Int','Tgt','Cmp','Cmp%','Yds','Yds/Cmp','Yds/Tgt','TD','Rat','DADOT','Air','YAC','Bltz','Hrry','QBKD','Sk','Prss','Comb','MTkl','MTkl%']
-    expected_cols={col:None for col in cols}
+    expected_cols={'Tgt':np.int64,'Cmp':np.int64,'Cmp%':np.float64,'Yds':np.int64,'Yds/Cmp':np.float64,'Yds/Tgt':np.float64,
+                   'TD':np.int64,'Rat':np.float64,'DADOT':np.float64,'Air':np.int64,'YAC':np.int64,'Bltz':np.int64,'Hrry':np.int64,
+                   'QBKD':np.int64,'Sk':np.float64,'Prss':np.int64,'Comb':np.int64,'MTkl':np.int64,'MTkl%':np.float64}
+    
+    rename_cols={'Yds':'Yds_Allowed','TD':'TD_Allowed'}
 
     cat='advanced defense'
+
+    calc_columns={}
+
+    col_order=['Player','Tm','Int','Tgt','Cmp','Cmp%','Yds','Yds/Cmp','Yds/Tgt','TD','Rat','DADOT','Air','YAC','Bltz','Hrry','QBKD','Prss','Comb','MTkl','MTkl%']
 
 # Salary Stuff
 
@@ -1274,37 +1288,84 @@ class Other_Game_Details:
         
 # Fact_Stats
 
-class Defense_Table(Stat_Table): #extension
-    def __init__(self,soup,category):
+class Defense_Table(Fact): #extension
+    def __init__(self,category,soup,roster_table):
+        for k,v in category.__dict__.items():
+            if not k.startswith('__'):
+                setattr(self,k,v)
         self.soup=soup
+        self.category=category
         try:
-            super().__init__(soup,category)
-        except MissingCols: # defense table will fail shapecheck on import- shapecheck occurs after renaming duplicate columns
+            super().__init__(category,soup)
+        except extractor.MissingCols: # defense table will fail shapecheck on import- shapecheck occurs after renaming duplicate columns
             pass
 
         box_1=self.df.iloc[:,:2]
         box_2=self.df.iloc[:,2:7].rename(columns={'Yds':'int_Yds','TD':'int_TD'})
-        box_3=self.df.iloc[:,7:]
+        box_3=self.df.iloc[:,7:].rename(columns={'Yds':'Fmbl_Yds','TD':'Fmbl_TD'})
 
         self.base_defense=pd.concat([box_1,box_2,box_3],axis=1)
 
         self.df=self.base_defense
 
+        self.df=self.df[self.df['Player']!='Player'].infer_objects(copy=False).fillna(0)
+
         self.shapecheck()
 
-        advanced_stats=self.get_advanced_stats()
+        advanced_stats=self.get_advanced_stats(roster_table)
 
         self.df=pd.merge(self.base_defense,advanced_stats,on=['Player','Tm'],how='outer').fillna(0)
+
+        self.expected_cols=self.expected_cols|Advanced_Defense.expected_cols
+
+        self.df=self.df[self.df['Player']!='Player']
+        self.df=self.df[self.df['Player']!=0]
+
+        if hasattr(self, "cleaning"):
+            self.clean_table()
+
+        for col in Advanced_Defense.rename_cols:
+            self.expected_cols[Advanced_Defense.rename_cols[col]]=self.expected_cols.pop(col)
+
+        self.typecheck()
+        self.calculate_values()
+        self.long_now()
+        self.sub_ids(roster_table.copy())
 
         self.df = self.df[self.df['Player'] != 'Player']
         self.df = self.df[self.df['Player'] != 0]
         logging.debug(f'\n{self.df}')
 
-    def get_advanced_stats(self):
+    def sub_ids(self,roster_table):
+        self.sub_player_ids(roster_table)
+        self.sub_stat_ids()
+
+    def get_advanced_stats(self,roster_table):
         advanced=Table(Advanced_Defense,self.soup)
         advanced.df.drop(columns=['Int','Sk','Comb'],inplace=True)
         advanced.df.rename(columns={'Yds':'Yds_Allowed','TD':'TD_Allowed'},inplace=True)
         return advanced.df
+    
+    def sub_player_ids(self,roster_table):
+        roster_table['merge_key'] = roster_table['Name'] + "_" + roster_table['Team']
+        self.df['merge_key']=self.df['Player'].astype(str)+"_"+self.df['Tm'].astype(str)
+        id_map = roster_table.set_index('merge_key')['Player_ID']
+        self.df['Player'] = self.df['merge_key'].map(id_map)
+
+        unmapped = self.df[self.df['Player'].isna()]
+        if not unmapped.empty:
+            logging.warning(f"Players not found in roster: {unmapped['merge_key'].unique()}")
+
+        self.df.drop(columns=['merge_key'], inplace=True)
+
+
+    def sub_stat_ids(self):
+        print(repr(self.df['Stat'].unique()))
+        print(self.df['Stat'].unique())
+        mapping_dict = dim_stats[self.category.cat]
+        self.df['Stat'] = self.df['Stat'].map(mapping_dict)
+        print(self.df['Stat'].unique())
+        print('\nslimyy')
 
 # Dimension Tables
 
