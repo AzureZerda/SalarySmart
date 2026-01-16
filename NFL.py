@@ -4,7 +4,6 @@ from abc import ABC, ABCMeta
 import numpy as np
 import pandas as pd
 from bs4 import BeautifulSoup
-from extractor import DIM_Players_Mixin, Table, Fact, BaseClasses, TableNotFound
 import extractor
 from Exporter import Export_Manager
 import logging
@@ -172,7 +171,7 @@ class Season_Mixins:
             details[label]=detail
         return details
 
-class Team(Table,Season_Mixins):
+class Team(extractor.Table,Season_Mixins):
     def __init__(self,team,htmls):
         team_abbr=teams[team]['abbr']
         html=htmls.team_htmls[team_abbr]
@@ -236,14 +235,14 @@ def merge_dashboards():
     exporter=Export_Manager('C:\\Users\\19495\\OneDrive\\Documents\\Python\\SalarySmart\\Dashboards\\Full\\')
     exporter.export(merged)
             
-class SalaryTable(Fact):
+class SalaryTable(extractor.Fact):
     def __init__(self,html):
         soup = BeautifulSoup(html, "html.parser")
         self.salary_dfs=[]
         for cat in Sal_Cat.registry:
             try:
                 super().__init__(cat,soup)
-            except TableNotFound:
+            except extractor.TableNotFound:
                 continue
             self.process_df(self.df)
             self.df['Category']=cat.name
@@ -462,7 +461,7 @@ class Season(Season_Mixins):
         self.dim_teams=teams_table
         self.dim_games=merged
 
-class Week(Fact):
+class Week(extractor.Fact):
     def __init__(self,week,year,htmls,roster_table,last_week):
         if len(str(week))==1:
             week=f'0{week}'
@@ -555,7 +554,7 @@ class Week(Fact):
 
 # functions
 
-class Game(Fact):
+class Game(extractor.Fact):
     def __init__(self,week_id,index,html,roster_table,week,year):
         soup=BeautifulSoup(html,'html.parser')
         if len(str(index))==1:
@@ -607,17 +606,17 @@ class Game(Fact):
         game_day_rosters=game_day_rosters[['Player','Team']]
         return game_day_rosters
 
-class Game_Log(BaseClasses.html):
+class Game_Log(extractor.BaseClasses.html):
     id='pbp'
     expected_cols={'Quarter':np.int64,'Time':object,'Down':np.int64,'ToGo':np.int64,'Location':object,'Detail':object}
     cat='penalties'
 
-class Gameday_Roster(BaseClasses.html):
+class Gameday_Roster(extractor.BaseClasses.html):
     id='_snap_counts'
     expected_cols={'Player':object,'Pos':object,'Num':np.int64,'Pct':np.float64}
     cat='gameday_roster'
 
-class FACT_Penalties(Fact):
+class FACT_Penalties(extractor.Fact):
     def __init__(self,soup,game_id,roster,teams):
         self.game_id=game_id
         category=Game_Log
@@ -740,7 +739,7 @@ class Fact_Stats: # orchestration
         self.df['Game_ID'] = self.df['Tm'].map(game.set_index('Team')['Team_ID'])
         self.df = self.df[['Player','Game_ID','Tm','Stat','Value']]
 
-class Stat_Table(Fact):
+class Stat_Table(extractor.Fact):
     def __init__(self,soup,category,roster_table):
         self.category=category
         logging.debug(f'Extracting {category.cat} data...')
@@ -782,7 +781,7 @@ class Stat_Table(Fact):
         mapping_dict = dim_stats[self.category.cat]
         self.df['Stat'] = self.df['Stat'].map(mapping_dict)
 
-class Scoring_Tables(Fact):
+class Scoring_Tables(extractor.Fact):
     def __init__(self,soup,game_id,roster_table):
         global teams_df
         category=Scoring
@@ -842,7 +841,7 @@ class Scoring_Tables(Fact):
                 self.set_quarter(quarter)
         self.quarter=quarter
         
-class Fact_Scoring(Fact):
+class Fact_Scoring(extractor.Fact):
     def __init__(self,details):
         dfs=[]
         for score in details:
@@ -985,7 +984,7 @@ class PointAddedTry(score_type):
 class TwoPointAttempt(score_type):
     abbreviation='2PT'
 
-class Scoring(BaseClasses.html):
+class Scoring(extractor.BaseClasses.html):
     id='scoring'
     expected_cols={'Quarter':object,'Time':object,'Detail':object}
     cat='scoring'
@@ -1199,7 +1198,7 @@ class Defense(metaclass=Stat_Cat):
         }
     summary_stats=['D1','D2','D3','D5','D6','D7','D8','D9','D10','D11','D12','D13','D14','D15','D16','D17','D19','D22','D23','D24','D25','D26','D27','D28','D29','D30','D31']
 
-class Advanced_Defense(BaseClasses.html): # DO NOT add the stat_cat metaclass to this. This is to set the extraction to be added into the defense table.
+class Advanced_Defense(extractor.BaseClasses.html): # DO NOT add the stat_cat metaclass to this. This is to set the extraction to be added into the defense table.
     id='defense_advanced'
 
     cols=['Player','Tm','Int','Tgt','Cmp','Cmp%','Yds','Yds/Cmp','Yds/Tgt','TD','Rat','DADOT','Air','YAC','Bltz','Hrry','QBKD','Sk','Prss','Comb','MTkl','MTkl%']
@@ -1286,7 +1285,7 @@ class Other_Game_Details:
         
 # Fact_Stats
 
-class Defense_Table(Fact): #extension
+class Defense_Table(extractor.Fact): #extension
     def __init__(self,category,soup,roster_table):
         for k,v in category.__dict__.items():
             if not k.startswith('__'):
@@ -1339,7 +1338,7 @@ class Defense_Table(Fact): #extension
         self.sub_stat_ids()
 
     def get_advanced_stats(self,roster_table):
-        advanced=Table(Advanced_Defense,self.soup)
+        advanced=extractor.Table(Advanced_Defense,self.soup)
         advanced.df.drop(columns=['Int','Sk','Comb'],inplace=True)
         advanced.df.rename(columns={'Yds':'Yds_Allowed','TD':'TD_Allowed'},inplace=True)
         return advanced.df
@@ -1364,7 +1363,7 @@ class Defense_Table(Fact): #extension
 
 # DIM_Players
 
-class Roster(BaseClasses.html):
+class Roster(extractor.BaseClasses.html):
     id='roster'
     expected_cols={'No.':object,'Player':object,'Age':np.int64,'Pos':object,'G':np.int64,'GS':np.int64,'Wt':object,'Ht':object,'College/Univ':object,'BirthDate':object,'Yrs':object,'AV':object,'Drafted (tm/rnd/yr)':object}
     cleaning={
@@ -1372,12 +1371,12 @@ class Roster(BaseClasses.html):
     }
     cat='DIM_Players'
 
-class Starters(BaseClasses.html):
+class Starters(extractor.BaseClasses.html):
     id='starters'
     cat='starters'
     expected_cols={'Pos':object,'Player':object,'Age':int,'Yrs':object,'GS':int,'Summary of Player Stats':object,'Drafted (tm/rnd/yr)':object}
 
-class Players_Table(Table):
+class Players_Table(extractor.Table):
     def __init__(self,soup,year,team):
         self.year=year
         self.soup=soup
@@ -1393,7 +1392,7 @@ class Players_Table(Table):
     def get_starters(self):
         try:
             super().__init__(Starters,self.soup)
-        except TableNotFound:
+        except extractor.TableNotFound:
             logging.error('No starters table found- proceeding without starter info')
             my_list=[]
             return my_list 
@@ -1402,7 +1401,7 @@ class Players_Table(Table):
         my_list=self.df['Player'].tolist()
         return my_list
 
-class DIM_Players(DIM_Players_Mixin):
+class DIM_Players(extractor.DIM_Players_Mixin):
     def __init__(self,year,htmls):
         self.year=year
         self.dfs={}
@@ -1456,4 +1455,4 @@ class Scraper_Settings:
         self.start_week=start_week
         self.end_week=end_week
 
-#merge_dashboards()
+merge_dashboards()
