@@ -25,6 +25,16 @@ with open("teams.json") as f:
 
 with open("stats.json") as f:
     stats_dict = json.load(f)
+
+    rows = []
+    for category, stats in stats_dict.items():
+        for stat in stats:
+            row = stat.copy()
+            row["Category"] = category
+            rows.append(row)
+
+    stat_df = pd.DataFrame(rows)
+
 dim_stats={}
 
 for cat in stats_dict:
@@ -402,8 +412,6 @@ class Season(Season_Mixins):
 
             self.dim_games['Week']=self.dim_games['Week'].astype(int)
 
-            return
-
             export_dic={
                 'FACT_Stats':fact_stats,
                 'FACT_Scoring':fact_scoring,
@@ -730,12 +738,12 @@ class Fact_Stats: # orchestration
         dataframes=[]
 
         for cat_cls in Stat_Cat.registry:
-            if cat_cls.cat=='defense':
+            if cat_cls.cat.lower()=='defense':
                 instance=Defense_Table(cat_cls,soup,roster_table)
             else:
                 instance=Stat_Table(soup,cat_cls,roster_table)
+            instance.df=extractor.sub_dim_id(instance.df,stat_df[stat_df['Category'].str.lower()==cat_cls.cat],{'Stat':'Abbrev'},'ID','Stat')
             instance.df=extractor.sub_dim_id(instance.df,roster_table,{'Player':'Name','Tm':'Team'},'Player_ID','Player')
-            print(instance.df)
             dataframes.append(instance.df)
         self.df=pd.concat(dataframes)
         self.Add_Game_IDs(game_table)
@@ -763,14 +771,6 @@ class Stat_Table(Fact):
         self.typecheck()
         self.calculate_values()
         self.long_now()
-        self.sub_ids(roster_table.copy())
-
-    def sub_ids(self,roster_table):
-        self.sub_stat_ids()
-
-    def sub_stat_ids(self):
-        mapping_dict = dim_stats[self.category.cat]
-        self.df['Stat'] = self.df['Stat'].map(mapping_dict)
 
 class Scoring_Tables(Fact):
     def __init__(self,soup,game_id,roster_table):
