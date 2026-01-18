@@ -10,7 +10,6 @@ from Exporter import Export_Manager
 import logging
 import json
 import scraping
-from pathlib import Path
 
 logging.basicConfig(
     filename=f'new_log.txt',
@@ -62,6 +61,25 @@ class Stat_Cat(ABCMeta): # any flat class used to define a statistical category 
             Stat_Cat.registry.append(new_cls)
 
         return new_cls
+
+class Sal_Cat(ABCMeta): # any flat class used to define a salary category must inherit this
+    registry = []
+
+    def __new__(cls, name, bases, attrs):
+        new_cls = super().__new__(cls, name, bases, attrs)
+
+        if not attrs.get('__abstractmethods__', False):
+            required_attrs = ['id', 'expected_cols', 'cat','required','name']
+            for attr in required_attrs:
+                if not hasattr(new_cls, attr):
+                    raise TypeError(f"Class {name} must define '{attr}'")
+
+            Sal_Cat.registry.append(new_cls)
+
+        return new_cls
+
+class score_type(ABC):
+    pass
 
 # orchestrators
 
@@ -563,6 +581,27 @@ class Week(Fact):
         self.season_sum.fillna(0)
         self.season_sum['Game_ID']=self.week_id
 
+class Fact_Stats: # orchestration
+    def __init__(self,game_id,soup,roster_table,game_table):
+        logging.info('Extracting fact table data...')
+        
+        dataframes=[]
+
+        for cat_cls in Stat_Cat.registry:
+            if cat_cls.cat.lower()=='defense':
+                instance=Defense_Table(cat_cls,soup,roster_table)
+            else:
+                instance=Stat_Table(soup,cat_cls,roster_table)
+            instance.df=extractor.sub_dim_id(instance.df,stat_df[stat_df['Category'].str.lower()==cat_cls.cat],{'Stat':'Abbrev'},'ID','Stat')
+            instance.df=extractor.sub_dim_id(instance.df,roster_table,{'Player':'Name','Tm':'Team'},'Player_ID','Player')
+            dataframes.append(instance.df)
+        self.df=pd.concat(dataframes)
+        self.Add_Game_IDs(game_table)
+    
+    def Add_Game_IDs(self,game):
+        self.df['Game_ID'] = self.df['Tm'].map(game.set_index('Team')['Team_ID'])
+        self.df = self.df[['Player','Game_ID','Tm','Stat','Value']]
+
 # functions
 
 class Game(Fact):
@@ -731,27 +770,6 @@ class DIM_Games(Season_Mixins):
 
         self.df=pd.DataFrame(rows,columns=['Team_ID','Team','Opponent','Result','Game ID','Game','Week','Year','Date','Time','Stadium','Roof','Surface','Referee'])
 
-class Fact_Stats: # orchestration
-    def __init__(self,game_id,soup,roster_table,game_table):
-        logging.info('Extracting fact table data...')
-        
-        dataframes=[]
-
-        for cat_cls in Stat_Cat.registry:
-            if cat_cls.cat.lower()=='defense':
-                instance=Defense_Table(cat_cls,soup,roster_table)
-            else:
-                instance=Stat_Table(soup,cat_cls,roster_table)
-            instance.df=extractor.sub_dim_id(instance.df,stat_df[stat_df['Category'].str.lower()==cat_cls.cat],{'Stat':'Abbrev'},'ID','Stat')
-            instance.df=extractor.sub_dim_id(instance.df,roster_table,{'Player':'Name','Tm':'Team'},'Player_ID','Player')
-            dataframes.append(instance.df)
-        self.df=pd.concat(dataframes)
-        self.Add_Game_IDs(game_table)
-    
-    def Add_Game_IDs(self,game):
-        self.df['Game_ID'] = self.df['Tm'].map(game.set_index('Team')['Team_ID'])
-        self.df = self.df[['Player','Game_ID','Tm','Stat','Value']]
-
 class Stat_Table(Fact):
     def __init__(self,soup,category,roster_table):
         self.category=category
@@ -771,6 +789,59 @@ class Stat_Table(Fact):
         self.typecheck()
         self.calculate_values()
         self.long_now()
+
+class Defense_Table(Fact): #extension
+    def __init__(self,category,soup,roster_table):
+        for k,v in category.__dict__.items():
+            if not k.startswith('__'):
+                setattr(self,k,v)
+        self.soup=soup
+        self.category=category
+        try:
+            super().__init__(category,soup)
+        except extractor.MissingCols: # defense table will fail shapecheck on import- shapecheck occurs after renaming duplicate columns
+            pass
+
+        box_1=self.df.iloc[:,:2]
+        box_2=self.df.iloc[:,2:7].rename(columns={'Yds':'int_Yds','TD':'int_TD'})
+        box_3=self.df.iloc[:,7:].rename(columns={'Yds':'Fmbl_Yds','TD':'Fmbl_TD'})
+
+        self.base_defense=pd.concat([box_1,box_2,box_3],axis=1)
+
+        self.df=self.base_defense
+
+        self.df=self.df[self.df['Player']!='Player'].infer_objects(copy=False).fillna(0)
+
+        self.shapecheck()
+
+        advanced_stats=self.get_advanced_stats(roster_table)
+
+        self.df=pd.merge(self.base_defense,advanced_stats,on=['Player','Tm'],how='outer').fillna(0)
+
+        self.expected_cols=self.expected_cols|Advanced_Defense.expected_cols
+
+        self.df=self.df[self.df['Player']!='Player']
+        self.df=self.df[self.df['Player']!=0]
+
+        if hasattr(self, "cleaning"):
+            self.clean_table()
+
+        for col in Advanced_Defense.rename_cols:
+            self.expected_cols[Advanced_Defense.rename_cols[col]]=self.expected_cols.pop(col)
+
+        self.typecheck()
+        self.calculate_values()
+        self.long_now()
+
+        self.df = self.df[self.df['Player'] != 'Player']
+        self.df = self.df[self.df['Player'] != 0]
+        logging.debug(f'\n{self.df}')
+
+    def get_advanced_stats(self,roster_table):
+        advanced=Table(Advanced_Defense,self.soup)
+        advanced.df.drop(columns=['Int','Sk','Comb'],inplace=True)
+        advanced.df.rename(columns={'Yds':'Yds_Allowed','TD':'TD_Allowed'},inplace=True)
+        return advanced.df
 
 class Scoring_Tables(Fact):
     def __init__(self,soup,game_id,roster_table):
@@ -959,9 +1030,6 @@ class Fact_Scoring(Fact):
 class Score:
     def __init__(self,details,type):
         pass
-
-class score_type(ABC):
-    pass
 
 class Touchdown(score_type):
     abbreviation='TD'
@@ -1207,22 +1275,6 @@ class Advanced_Defense(BaseClasses.html): # DO NOT add the stat_cat metaclass to
 
 # Salary Stuff
 
-class Sal_Cat(ABCMeta): # any flat class used to define a salary category must inherit this
-    registry = []
-
-    def __new__(cls, name, bases, attrs):
-        new_cls = super().__new__(cls, name, bases, attrs)
-
-        if not attrs.get('__abstractmethods__', False):
-            required_attrs = ['id', 'expected_cols', 'cat','required','name']
-            for attr in required_attrs:
-                if not hasattr(new_cls, attr):
-                    raise TypeError(f"Class {name} must define '{attr}'")
-
-            Sal_Cat.registry.append(new_cls)
-
-        return new_cls
-
 class ActiTable(metaclass=Sal_Cat):
     id='table_active'
     cat='Salaries'
@@ -1275,67 +1327,6 @@ class Other_Game_Details:
 # Fact Table functionality
         
 # Fact_Stats
-
-class Defense_Table(Fact): #extension
-    def __init__(self,category,soup,roster_table):
-        for k,v in category.__dict__.items():
-            if not k.startswith('__'):
-                setattr(self,k,v)
-        self.soup=soup
-        self.category=category
-        try:
-            super().__init__(category,soup)
-        except extractor.MissingCols: # defense table will fail shapecheck on import- shapecheck occurs after renaming duplicate columns
-            pass
-
-        box_1=self.df.iloc[:,:2]
-        box_2=self.df.iloc[:,2:7].rename(columns={'Yds':'int_Yds','TD':'int_TD'})
-        box_3=self.df.iloc[:,7:].rename(columns={'Yds':'Fmbl_Yds','TD':'Fmbl_TD'})
-
-        self.base_defense=pd.concat([box_1,box_2,box_3],axis=1)
-
-        self.df=self.base_defense
-
-        self.df=self.df[self.df['Player']!='Player'].infer_objects(copy=False).fillna(0)
-
-        self.shapecheck()
-
-        advanced_stats=self.get_advanced_stats(roster_table)
-
-        self.df=pd.merge(self.base_defense,advanced_stats,on=['Player','Tm'],how='outer').fillna(0)
-
-        self.expected_cols=self.expected_cols|Advanced_Defense.expected_cols
-
-        self.df=self.df[self.df['Player']!='Player']
-        self.df=self.df[self.df['Player']!=0]
-
-        if hasattr(self, "cleaning"):
-            self.clean_table()
-
-        for col in Advanced_Defense.rename_cols:
-            self.expected_cols[Advanced_Defense.rename_cols[col]]=self.expected_cols.pop(col)
-
-        self.typecheck()
-        self.calculate_values()
-        self.long_now()
-
-        self.df = self.df[self.df['Player'] != 'Player']
-        self.df = self.df[self.df['Player'] != 0]
-        logging.debug(f'\n{self.df}')
-
-    def sub_ids(self,roster_table):
-        self.sub_player_ids(roster_table)
-        self.sub_stat_ids()
-
-    def get_advanced_stats(self,roster_table):
-        advanced=Table(Advanced_Defense,self.soup)
-        advanced.df.drop(columns=['Int','Sk','Comb'],inplace=True)
-        advanced.df.rename(columns={'Yds':'Yds_Allowed','TD':'TD_Allowed'},inplace=True)
-        return advanced.df
-
-    def sub_stat_ids(self):
-        mapping_dict = dim_stats[self.category.cat]
-        self.df['Stat'] = self.df['Stat'].map(mapping_dict)
 
 # Dimension Tables
 
@@ -1410,18 +1401,6 @@ class DIM_Players(DIM_Players_Mixin):
         logging.debug(self.df)
 
 # DIM_Teams
-
-class Team_Details_1:
-    head_coach=1
-    offensive_coordinator=6
-    defensive_coordinator=7
-    stadium=9
-
-class Team_Details_2:
-    head_coach=1
-    offensive_coordinator=7
-    defensive_coordinator=8
-    stadium=10
 
 # helpers
 
