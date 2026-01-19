@@ -214,6 +214,7 @@ class Table: # note for review- this class should never be directly inherited.
                     logging.debug('Successfully converted to expected type.')
                 except Exception as e:
                     logging.error(f'Unable to convert{col}- {e}')
+        return df
 
     def clean_table(self):
         for col, rules in self.cleaning.items():
