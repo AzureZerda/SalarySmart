@@ -594,6 +594,8 @@ class Fact_Stats(extractor.Fact): # orchestration
             instance.df=pd.melt(instance.df,id_vars=['Player','Tm'],value_vars=cat_cls.value_vars,var_name='Stat')
             instance.df=extractor.sub_dim_id(instance.df,stat_df[stat_df['Category'].str.lower()==cat_cls.cat],{'Stat':'Abbrev'},'ID','Stat')
             instance.df=extractor.sub_dim_id(instance.df,roster_table,{'Player':'Name','Tm':'Team'},'Player_ID','Player')
+            self.df = self.df[self.df['Player'] != 'Player']
+            self.df = self.df[self.df['Player'] != 0]
             dataframes.append(instance.df)
         self.df=pd.concat(dataframes)
         self.Add_Game_IDs(game_table)
@@ -831,8 +833,6 @@ class Defense_Table(extractor.Fact): #extension
         self.typecheck()
         self.calculate_values()
 
-        self.df = self.df[self.df['Player'] != 'Player']
-        self.df = self.df[self.df['Player'] != 0]
         logging.debug(f'\n{self.df}')
 
     def get_advanced_stats(self,roster_table):
