@@ -200,9 +200,8 @@ class Table: # note for review- this class should never be directly inherited.
         if leftover_cols:
             logging.warning(f'Shapecheck succeeded, however there are more columns than expected. Unexpected columns: {leftover_cols}. These will be retained.')
 
-    def typecheck(self,df,expected_cols,strict=True):
-        logging.debug(df)
-        for col in expected_cols:
+    def typecheck(self,df,expected_cols):
+        for col in df.columns:
             expectedtype=expected_cols[col]
             actualtype=df[col].dtypes
             if expectedtype==actualtype:
@@ -212,12 +211,9 @@ class Table: # note for review- this class should never be directly inherited.
                 logging.debug(f'{col} failed typecheck. Expected type: {expectedtype}. Actual type: {actualtype}. Attempting conversion...')
                 try:
                     df[col]=df[col].astype(expectedtype)
-                except ValueError:
-                    if strict:
-                        raise ValueError
-                    logging.error(f'Column {col} could not be converted to type {expectedtype}')
-                logging.debug('Successfully converted to expected type.')
-        return df
+                    logging.debug('Successfully converted to expected type.')
+                except Exception as e:
+                    logging.error(f'Unable to convert{col}- {e}')
 
     def clean_table(self):
         for col, rules in self.cleaning.items():
@@ -229,9 +225,7 @@ class Table: # note for review- this class should never be directly inherited.
 class Fact(Table):
     def summerge(self,merged_df): #pass a pre-merged df into this. Does not have merging logic since it's very context-dependent
         calc_cols=self.convert_col_names(merged_df)
-        #print(merged_df)
         for col in calc_cols:
-            #print(col)
             merged_df[col]=merged_df[f'{col}_x']+merged_df[f'{col}_y']
             merged_df.drop(columns=[f'{col}_x',f'{col}_y'],inplace=True)
         return merged_df 
@@ -267,12 +261,8 @@ class Fact(Table):
         logging.debug(f'After calculating, this is the table:\n\n{self.df}')
         try:
             self.df=self.df[self.category.col_order]
-        except KeyError:
-            logging.warning('Missing columns in the intended order. Skipping re-ordering.')
-
-    def long_now(self):
-        logging.debug(f'Before lengthening, this is the dataframe:\n\n{self.df}')
-        self.df=self.df.melt(id_vars=['Player','Tm'],value_vars=self.value_vars,var_name='Stat',value_name='Value')
+        except:
+            pass
 
 class Dim_Check(ABC):
     @property
