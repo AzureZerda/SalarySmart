@@ -580,7 +580,7 @@ class Week(extractor.Fact):
         self.season_sum.fillna(0)
         self.season_sum['Game_ID']=self.week_id
 
-class Fact_Stats: # orchestration
+class Fact_Stats(extractor.Fact): # orchestration
     def __init__(self,game_id,soup,roster_table,game_table):
         logging.info('Extracting fact table data...')
         
@@ -591,6 +591,7 @@ class Fact_Stats: # orchestration
                 instance=Defense_Table(cat_cls,soup,roster_table)
             else:
                 instance=Stat_Table(soup,cat_cls,roster_table)
+            instance.df=pd.melt(instance.df,id_vars=['Player','Tm'],value_vars=cat_cls.value_vars,var_name='Stat')
             instance.df=extractor.sub_dim_id(instance.df,stat_df[stat_df['Category'].str.lower()==cat_cls.cat],{'Stat':'Abbrev'},'ID','Stat')
             instance.df=extractor.sub_dim_id(instance.df,roster_table,{'Player':'Name','Tm':'Team'},'Player_ID','Player')
             dataframes.append(instance.df)
@@ -787,7 +788,6 @@ class Stat_Table(extractor.Fact):
 
         self.typecheck()
         self.calculate_values()
-        self.long_now()
 
 class Defense_Table(extractor.Fact): #extension
     def __init__(self,category,soup,roster_table):
@@ -830,7 +830,6 @@ class Defense_Table(extractor.Fact): #extension
 
         self.typecheck()
         self.calculate_values()
-        self.long_now()
 
         self.df = self.df[self.df['Player'] != 'Player']
         self.df = self.df[self.df['Player'] != 0]
