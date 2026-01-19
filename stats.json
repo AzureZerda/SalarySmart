@@ -27,7 +27,11 @@
     {"ID":"P25","Abbrev":"Scrm","FullName":"Scrambles","Description":"Number of plays where QB scrambled","Category":"Passing"},
     {"ID":"P26","Abbrev":"ScrmYds","FullName":"Scramble Yards","Description":"Yards gained on QB scrambles","Category":"Passing"},
     {"ID":"P27","Abbrev":"Yds/Scr","FullName":"Yards per Scramble","Description":"","Category":"Passing"},
-    {"ID":"P28","Abbrev":"PassPlays","FullName":"Pass Plays","Description":"The amount of pass plays(used for calculating other values)","Category":"Passing"}
+    {"ID":"P28","Abbrev":"PassPlays","FullName":"Pass Plays","Description":"The amount of pass plays(used for calculating other values)","Category":"Passing"},
+    {"ID":"P29","Abbrev":"Int","FullName":"Interceptions","Description":"Passes intercepted","Category":"Passing"},
+    {"ID":"P30","Abbrev":"Lng","FullName":"Long","Description":"Longest pass","Category":"Passing"},
+    {"ID":"P31","Abbrev":"Rate","FullName":"Rate","Description":"Passer rating","Category":"Passing"},
+    {"ID":"P32","Abbrev":"TD","FullName":"Touchdowns","Description":"Passing touchdowns","Category":"Passing"}
   ],
   "Receiving": [
     {"ID":"C1","Abbrev":"Tgt","FullName":"Targets","Description":"Number of times a receiver was the intended target on a pass","Category":"Receiving"},
