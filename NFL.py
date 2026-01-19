@@ -429,6 +429,8 @@ class Season(Season_Mixins):
 
             self.dim_games['Week']=self.dim_games['Week'].astype(int)
 
+            return
+
             export_dic={
                 'FACT_Stats':fact_stats,
                 'FACT_Scoring':fact_scoring,
@@ -562,8 +564,6 @@ class Week(extractor.Fact):
                 merged.rename(columns={'Tm_y':'Tm'},inplace=True)
                 filtered_=self.summerge(merged)
 
-                #print(filtered_.head())
-
                 for calc in cat.season_calcs:
                     if calc=='avg':
                         form=lambda a,b:a/(b.replace(0, np.nan))
@@ -591,11 +591,11 @@ class Fact_Stats(extractor.Fact): # orchestration
                 instance=Defense_Table(cat_cls,soup,roster_table)
             else:
                 instance=Stat_Table(soup,cat_cls,roster_table)
-            instance.df=pd.melt(instance.df,id_vars=['Player','Tm'],value_vars=cat_cls.value_vars,var_name='Stat')
+            instance.df=pd.melt(instance.df,id_vars=['Player','Tm'],value_vars=cat_cls.value_vars,var_name='Stat',value_name='Value')
             instance.df=extractor.sub_dim_id(instance.df,stat_df[stat_df['Category'].str.lower()==cat_cls.cat],{'Stat':'Abbrev'},'ID','Stat')
             instance.df=extractor.sub_dim_id(instance.df,roster_table,{'Player':'Name','Tm':'Team'},'Player_ID','Player')
-            self.df = self.df[self.df['Player'] != 'Player']
-            self.df = self.df[self.df['Player'] != 0]
+            instance.df = instance.df[instance.df['Player'] != 'Player']
+            instance.df = instance.df[instance.df['Player'] != 0]
             dataframes.append(instance.df)
         self.df=pd.concat(dataframes)
         self.Add_Game_IDs(game_table)
@@ -783,6 +783,20 @@ class Stat_Table(extractor.Fact):
             super().__init__(category,soup)
         except MissingCols:
             raise MissingCols
+        
+        if self.cat=='passing': 
+            basic_table=extractor.Table(Basic_Offense,soup)
+            basic_df=basic_table.df
+
+            basic_df=pd.concat(
+                [basic_df.iloc[:,:2],basic_df.iloc[:,self.basic_start:self.basic_end]],
+                axis=1
+            )
+            basic_df=basic_df.drop(columns=self.basic_drops)
+
+            self.df = self.df.merge(basic_df, on=['Player', 'Tm'], how='left')
+
+            self.expected_cols=self.expected_cols | self.expected_basic_cols
 
         self.df=self.df[self.df['Player']!='Player'].infer_objects(copy=False).fillna(0)
         if hasattr(self, "cleaning"):
@@ -1052,10 +1066,27 @@ class Scoring(extractor.BaseClasses.html):
 
 # constants
 
+class Basic_Offense(extractor.BaseClasses.html):
+    id='player_offense'
+    expected_cols={'Player':object,'Tm':object,'Cmp':object,'Att':object,'Yds':object,'TD':object,
+                   'Int':object,'Sk':object,'Yds':object,'Lng':object,'Rate':object,'Att':object,
+                   'Yds':object,'TD':object,'Lng':object,'Tgt':object,'Rec':object,'Yds':object,
+                   'TD':object,'Lng':object,'Fmb':object,'FL':object}
+    cat='offense'
+
 class Passing(metaclass=Stat_Cat):
-    expected_cols={'Player':object,'Tm':object,'Cmp':np.int64,'Att':np.int64,'Yds':np.int64,'1D':np.int64,'1D%':np.float64,'IAY':np.int64,'IAY/PA':np.float64,'CAY':np.int64,'CAY/Cmp':np.float64,'CAY/PA':np.float64,'YAC':np.int64,'YAC/Cmp':np.float64,'Drops':np.int64,'Drop%':np.float64,'BadTh':np.int64,'Bad%':np.float64,'Sk':np.int64,'Bltz':np.int64,'Hrry':np.int64,'Hits':np.int64,'Prss':np.int64,'Prss%':np.float64,'Scrm':np.int64,'Yds/Scr':np.float64}
-    value_vars=['Cmp','Att','Yds','Avg','Pct','1D','1D%','IAY','IAY/PA','CAY','CAY/Cmp','CAY/PA','YAC','YAC/Cmp','Drops','Drop%','BadTh','Bad%','Sk','Bltz','Hrry','Hits','Prss','Prss%','Scrm','Yds/Scr','PassPlays']
-    col_order=['Player','Tm','Cmp','Att','Yds','Avg','Pct','1D','1D%','IAY','IAY/PA','CAY','CAY/Cmp','CAY/PA','YAC','YAC/Cmp','Drops','Drop%','BadTh','Bad%','Sk','Bltz','Hrry','Hits','Prss','Prss%','Scrm','ScrmYds','Yds/Scr','PassPlays']
+    basic_start=2
+    basic_end=11
+    expected_cols={'Player':object,'Tm':object,'Cmp':np.int64,'Att':np.int64,'Yds':np.int64,'1D':np.int64,
+                   '1D%':np.float64,'IAY':np.int64,'IAY/PA':np.float64,'CAY':np.int64,'CAY/Cmp':np.float64,
+                   'CAY/PA':np.float64,'YAC':np.int64,'YAC/Cmp':np.float64,'Drops':np.int64,
+                   'Drop%':np.float64,'BadTh':np.int64,'Bad%':np.float64,'Sk':np.int64,'Bltz':np.int64,
+                   'Hrry':np.int64,'Hits':np.int64,'Prss':np.int64,'Prss%':np.float64,'Scrm':np.int64,
+                   'Yds/Scr':np.float64}
+    expected_basic_cols={'Int':np.int64,'Lng':np.int64,'Rate':np.float64,'TD':np.int64}
+    basic_drops=['Cmp','Att','Yds','Sk']
+    value_vars=['Cmp','Att','Yds','Avg','Pct','1D','1D%','IAY','IAY/PA','CAY','CAY/Cmp','CAY/PA','YAC','YAC/Cmp','Drops','Drop%','BadTh','Bad%','Sk','Bltz','Hrry','Hits','Prss','Prss%','Scrm','Yds/Scr','PassPlays','Int','TD']
+    col_order=['Player','Tm','Cmp','Att','Yds','Avg','Pct','Int','1D','1D%','IAY','IAY/PA','CAY','CAY/Cmp','CAY/PA','YAC','YAC/Cmp','Drops','Drop%','BadTh','Bad%','Sk','Bltz','Hrry','Hits','Prss','Prss%','Scrm','ScrmYds','Yds/Scr','PassPlays','TD']
     cleaning = {
         'Drop%': [{'target': '%', 'replace_with': ''}],
         'Bad%': [{'target': '%', 'replace_with': ''}],
@@ -1078,7 +1109,7 @@ class Passing(metaclass=Stat_Cat):
             'PassPlays':['Att','Sk']
             }
         }
-    summary_stats=['P1','P2','P3','P6','P8','P10','P13','P15','P17','P19','P20','P21','P22','P23','P25','P26','P28']
+    summary_stats=['P1','P2','P3','P6','P8','P10','P13','P15','P17','P19','P20','P21','P22','P23','P25','P26','P28','P29','P32']
     season_calcs={
         'avg':{'P4':['P3','P2'],'P9':['P8','P2'],'P11':['P10','P1'],'P12':['P10','P2'],'P14':['P13','P1']},
         'pct':{'P5':['P1','P2'],'P7':['P6','P28'],'P16':['P15','P2'],'P18':['P17','P2']}
@@ -1111,13 +1142,18 @@ class Passing(metaclass=Stat_Cat):
         'Scrm':'P25',
         'ScrmYds':'P26',
         'Yds/Scr':'P27',
-        'PassPlays':'P28'
+        'PassPlays':'P28',
+        'Int':'P29',
+        'Lng':'P30',
+        'Rate':'P31',
+        'TD':'P32'
         }
     
     season_vals=['P1','P2','P3','P4','P5','P6','P7','P8','P9','P10','P11','P12','P13','P14','P15','P16','P17',
-                 'P18','P19','P20','P21','P22','P23','P28']
+                 'P18','P19','P20','P21','P22','P23','P28','P29','P32']
 
 class Receiving(metaclass=Stat_Cat):
+    basic_id='player_offense'
     expected_cols={'Player':object,'Tm':object,'Tgt':np.int64,'Rec':np.int64,'Yds':np.int64,'TD':np.int64,'1D':np.int64,'YBC':np.int64,'YBC/R':np.float64,'YAC':np.int64,'YAC/R':np.float64,'ADOT':np.float64,'BrkTkl':np.int64,'Rec/Br':np.float64,'Drop':np.int64,'Drop%':np.float64,'Int':np.int64,'Rat':np.float64}
     value_vars=['Tgt','Rec','Pct','Yds','Avg/R','TD','1D','YBC','YBC/R','YAC','YAC/R','ADOT','BrkTkl','Rec/Br','Drop','Drop%','Int','Rat']
     col_order=['Player','Tm','Tgt','Rec','Pct','Yds','Avg/R','TD','1D','YBC','YBC/R','YAC','YAC/R','ADOT','BrkTkl','Rec/Br','Drop','Drop%','Int','Rat']
@@ -1164,6 +1200,7 @@ class Receiving(metaclass=Stat_Cat):
         'C5','C9','C11','C14','C3','C16','C12','C18']
 
 class Rushing(metaclass=Stat_Cat):
+    basic_id='player_offense'
     expected_cols={'Player':object,'Tm':object,'Att':np.int64,'Yds':np.int64,'TD':np.int64,'1D':np.int64,'YBC':np.int64,'YBC/Att':np.float64,'YAC':np.int64,'YAC/Att':np.float64,'BrkTkl':np.int64,'Att/Br':np.float64}
     value_vars=['Att','Yds','Avg/A','TD','1D','YBC','YBC/Att','YAC','YAC/Att','BrkTkl','Att/Br']
     col_order=['Player','Tm','Att','Yds','Avg/A','TD','1D','YBC','YBC/Att','YAC','YAC/Att','BrkTkl','Att/Br']
@@ -1359,7 +1396,7 @@ class Players_Table(extractor.Table):
     def get_starters(self):
         try:
             super().__init__(Starters,self.soup)
-        except TableNotFound:
+        except extractor.TableNotFound:
             logging.error('No starters table found- proceeding without starter info')
             my_list=[]
             return my_list 
@@ -1410,4 +1447,4 @@ class Scraper_Settings:
         self.start_week=start_week
         self.end_week=end_week
 
-merge_dashboards()
+#merge_dashboards()
