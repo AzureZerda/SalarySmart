@@ -40,6 +40,39 @@ for cat in stats_dict:
     for item in stats_dict[cat]:
         dim_stats[cat.lower()][item['Abbrev']]=item['ID']
 
+# functions
+
+def run_pipeline(year,html_method='scrape',htmls=None):
+    logging.info('Initializing pipeline...\n')
+    settings=default_pipeline_settings
+    settings.year=year
+    if html_method=='scrape':
+        htmls=HTML_Layer(settings)
+    elif html_method=='inject':
+        if not htmls:
+            raise AttributeError('When in injection mode, the pipeline must have an html object passed into it.')
+    obj=Season(htmls,settings)
+    merge_dashboards()
+    return
+
+def merge_dashboards():
+    years=['2023','2024','2025']
+    sheets={'FACT_Stats':[],'FACT_Scoring':[],'FACT_Salaries':[],'FACT_Penalties':[],'DIM_Games':[],'DIM_Players':[],'DIM_Teams':[],'DIM_Penalty_Details':[],'DIM_Score_Details':[]}
+    merged={'FACT_Stats':[],'FACT_Scoring':[],'FACT_Salaries':[],'FACT_Penalties':[],'DIM_Games':[],'DIM_Players':[],'DIM_Teams':[],'DIM_Penalty_Details':[],'DIM_Score_Details':[]}
+    for year in years:
+        path=f'C:\\Users\\19495\\OneDrive\\Documents\\Python\\SalarySmart\\Dashboards\\{year}\\'
+        for page in sheets:
+            file=f'{path}{page}.csv'
+            df=pd.read_csv(file)
+            sheets[page].append(df)
+
+    for sheet in sheets:
+        merged_df=pd.concat(sheets[sheet])
+        merged[sheet]=merged_df
+    
+    exporter=Export_Manager('C:\\Users\\19495\\OneDrive\\Documents\\Python\\SalarySmart\\Dashboards\\Full\\')
+    exporter.export(merged)
+
 # base classes
 
 class MissingCols(Exception):
@@ -234,34 +267,6 @@ class Team(extractor.Table,Season_Mixins):
         pct=round(points/total_games,3)
         setattr(self, 'Record', record)
         setattr(self, 'Pct', pct)
-
-def run_pipeline(year,html_method='scrape'):
-    logging.info('Initializing pipeline...\n')
-    settings=default_pipeline_settings
-    settings.year=year
-    if html_method=='scrape':
-        htmls=HTML_Layer(settings)
-    obj=Season(htmls,settings)
-    #merge_dashboards()
-    return
-
-def merge_dashboards():
-    years=['2024','2025']
-    sheets={'FACT_Stats':[],'FACT_Scoring':[],'FACT_Salaries':[],'FACT_Penalties':[],'DIM_Games':[],'DIM_Players':[],'DIM_Teams':[],'DIM_Penalty_Details':[],'DIM_Score_Details':[]}
-    merged={'FACT_Stats':[],'FACT_Scoring':[],'FACT_Salaries':[],'FACT_Penalties':[],'DIM_Games':[],'DIM_Players':[],'DIM_Teams':[],'DIM_Penalty_Details':[],'DIM_Score_Details':[]}
-    for year in years:
-        path=f'C:\\Users\\19495\\OneDrive\\Documents\\Python\\SalarySmart\\Dashboards\\{year}\\'
-        for page in sheets:
-            file=f'{path}{page}.csv'
-            df=pd.read_csv(file)
-            sheets[page].append(df)
-
-    for sheet in sheets:
-        merged_df=pd.concat(sheets[sheet])
-        merged[sheet]=merged_df
-    
-    exporter=Export_Manager('C:\\Users\\19495\\OneDrive\\Documents\\Python\\SalarySmart\\Dashboards\\Full\\')
-    exporter.export(merged)
             
 class SalaryTable(extractor.Fact):
     def __init__(self,html,year):
@@ -416,7 +421,7 @@ class Season(Season_Mixins):
             self.dim_games=pd.concat(dim_games_dfs)
             dim_score_details=pd.concat(dim_score_details_dfs)
             fact_penalties=pd.concat(self.fact_penalty_dfs)
-            fact_penalties["Value"]=fact_penalties["Value"].astype(float)
+            #fact_penalties["Value"]=fact_penalties["Value"].astype(float)
             dim_penalty_details=pd.concat(self.penalty_detail_dfs)
 
             self.add_soo_sov(self.dim_games,self.dim_teams)
@@ -428,8 +433,6 @@ class Season(Season_Mixins):
             fact_stats = fact_stats.replace([float('inf'), -float('inf')], 0)
 
             self.dim_games['Week']=self.dim_games['Week'].astype(int)
-
-            return
 
             export_dic={
                 'FACT_Stats':fact_stats,
@@ -1446,5 +1449,3 @@ class Scraper_Settings:
         self.scrape_games=games
         self.start_week=start_week
         self.end_week=end_week
-
-#merge_dashboards()
