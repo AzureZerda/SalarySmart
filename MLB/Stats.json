@@ -1,0 +1,342 @@
+{
+  "Hitting":[
+  {
+    "ID": "H1",
+    "Abbrev": "AB",
+    "FullName": "At Bats",
+    "Description": "Number of official batting attempts, excluding walks and sacrifices.",
+    "Category": "Batting"
+  },
+  {
+    "ID": "H2",
+    "Abbrev": "R",
+    "FullName": "Runs Scored",
+    "Description": "Times the player safely crossed home plate to score a run.",
+    "Category": "Batting"
+  },
+  {
+    "ID": "H3",
+    "Abbrev": "H",
+    "FullName": "Hits",
+    "Description": "Number of times the batter reached base on a hit.",
+    "Category": "Batting"
+  },
+  {
+    "ID": "H4",
+    "Abbrev": "RBI",
+    "FullName": "Runs Batted In",
+    "Description": "Runs a batter drives in excluding errors.",
+    "Category": "Batting"
+  },
+  {
+    "ID": "H5",
+    "Abbrev": "BB",
+    "FullName": "Bases on Balls (Walks)",
+    "Description": "Number of times the batter was awarded first base by four balls.",
+    "Category": "Batting"
+  },
+  {
+    "ID": "H6",
+    "Abbrev": "SO",
+    "FullName": "Strikeouts",
+    "Description": "Number of times the batter struck out.",
+    "Category": "Batting"
+  },
+  {
+    "ID": "H7",
+    "Abbrev": "PA",
+    "FullName": "Plate Appearances",
+    "Description": "Total times a batter completed a batting appearance.",
+    "Category": "Batting"
+  },
+  {
+    "ID": "H8",
+    "Abbrev": "BA",
+    "FullName": "Batting Average",
+    "Description": "Hits divided by at bats (H/AB).",
+    "Category": "Batting"
+  },
+  {
+    "ID": "H9",
+    "Abbrev": "OBP",
+    "FullName": "On‑Base Percentage",
+    "Description": "Rate at which a player reaches base (H+BB+HBP) divided by plate appearances.",
+    "Category": "Batting"
+  },
+  {
+    "ID": "H10",
+    "Abbrev": "SLG",
+    "FullName": "Slugging Percentage",
+    "Description": "Total bases per at bat, measuring hitting power.",
+    "Category": "Batting"
+  },
+  {
+    "ID": "H11",
+    "Abbrev": "OPS",
+    "FullName": "On‑Base Plus Slugging",
+    "Description": "Sum of OBP and SLG.",
+    "Category": "Batting"
+  },
+  {
+    "ID": "H12",
+    "Abbrev": "Pit",
+    "FullName": "Pitches Seen",
+    "Description": "Number of pitches the batter has faced.",
+    "Category": "Batting"
+  },
+  {
+    "ID": "H13",
+    "Abbrev": "Str",
+    "FullName": "Strikes Seen",
+    "Description": "Number of strikes seen by the batter.",
+    "Category": "Batting"
+  },
+  {
+    "ID": "H14",
+    "Abbrev": "WPA",
+    "FullName": "Win Probability Added",
+    "Description": "Change in team win probability attributed to the player.",
+    "Category": "Batting"
+  },
+  {
+    "ID": "H15",
+    "Abbrev": "aLI",
+    "FullName": "Average Leverage Index",
+    "Description": "Average leverage (game importance) of a player’s plate appearances.",
+    "Category": "Batting"
+  },
+  {
+    "ID": "H16",
+    "Abbrev": "WPA+",
+    "FullName": "Positive WPA",
+    "Description": "Sum of all positive contributions to WPA.",
+    "Category": "Batting"
+  },
+  {
+    "ID": "H17",
+    "Abbrev": "WPA-",
+    "FullName": "Negative WPA",
+    "Description": "Sum of all negative contributions to WPA.",
+    "Category": "Batting"
+  },
+  {
+    "ID": "H18",
+    "Abbrev": "cWPA",
+    "FullName": "Championship Win Probability Added",
+    "Description": "Contribution to championship win probability.",
+    "Category": "Batting"
+  },
+  {
+    "ID": "H19",
+    "Abbrev": "acLI",
+    "FullName": "Championship Leverage Index",
+    "Description": "Leverage index weighted for championship context.",
+    "Category": "Batting"
+  },
+  {
+    "ID": "H20",
+    "Abbrev": "RE24",
+    "FullName": "Run Expectancy (24 States)",
+    "Description": "Total run value contribution based on 24 base/out configurations.",
+    "Category": "Batting"
+  },
+  {
+    "ID": "H21",
+    "Abbrev": "PO",
+    "FullName": "Putouts",
+    "Description": "Number of times the player was credited with an out.",
+    "Category": "Batting"
+  },
+  {
+    "ID": "H22",
+    "Abbrev": "A",
+    "FullName": "Assists",
+    "Description": "Number of times a player assisted on a putout.",
+    "Category": "Batting"
+  }
+  ],
+  "Pitching":[
+  {
+    "ID": "P1",
+    "Abbrev": "IP",
+    "FullName": "Innings Pitched",
+    "Description": "Total innings a pitcher has completed. Partial innings are represented as decimals.",
+    "Category": "Pitching"
+  },
+  {
+    "ID": "P2",
+    "Abbrev": "H",
+    "FullName": "Hits Allowed",
+    "Description": "Number of hits surrendered by the pitcher.",
+    "Category": "Pitching"
+  },
+  {
+    "ID": "P3",
+    "Abbrev": "R",
+    "FullName": "Runs Allowed",
+    "Description": "Total runs scored against the pitcher, including earned and unearned runs.",
+    "Category": "Pitching"
+  },
+  {
+    "ID": "P4",
+    "Abbrev": "ER",
+    "FullName": "Earned Runs",
+    "Description": "Runs that scored without the aid of errors or passed balls.",
+    "Category": "Pitching"
+  },
+  {
+    "ID": "P5",
+    "Abbrev": "BB",
+    "FullName": "Walks Allowed",
+    "Description": "Number of batters awarded first base by four balls.",
+    "Category": "Pitching"
+  },
+  {
+    "ID": "P6",
+    "Abbrev": "SO",
+    "FullName": "Strikeouts",
+    "Description": "Number of batters struck out by the pitcher.",
+    "Category": "Pitching"
+  },
+  {
+    "ID": "P7",
+    "Abbrev": "HR",
+    "FullName": "Home Runs Allowed",
+    "Description": "Number of home runs surrendered by the pitcher.",
+    "Category": "Pitching"
+  },
+  {
+    "ID": "P8",
+    "Abbrev": "ERA",
+    "FullName": "Earned Run Average",
+    "Description": "Average number of earned runs allowed per nine innings.",
+    "Category": "Pitching"
+  },
+  {
+    "ID": "P9",
+    "Abbrev": "BF",
+    "FullName": "Batters Faced",
+    "Description": "Total number of batters faced by the pitcher.",
+    "Category": "Pitching"
+  },
+  {
+    "ID": "P10",
+    "Abbrev": "Pit",
+    "FullName": "Pitches Thrown",
+    "Description": "Total number of pitches thrown by the pitcher.",
+    "Category": "Pitching"
+  },
+  {
+    "ID": "P11",
+    "Abbrev": "Str",
+    "FullName": "Strikes Thrown",
+    "Description": "Total number of strikes thrown by the pitcher.",
+    "Category": "Pitching"
+  },
+  {
+    "ID": "P12",
+    "Abbrev": "Ctct",
+    "FullName": "Balls in Play Contact",
+    "Description": "Number of balls put in play in contact with the bat.",
+    "Category": "Pitching"
+  },
+  {
+    "ID": "P13",
+    "Abbrev": "StS",
+    "FullName": "Strikes Swinging",
+    "Description": "Number of swings and misses or swinging strikes.",
+    "Category": "Pitching"
+  },
+  {
+    "ID": "P14",
+    "Abbrev": "StL",
+    "FullName": "Strikes Looking",
+    "Description": "Number of called strikes.",
+    "Category": "Pitching"
+  },
+  {
+    "ID": "P15",
+    "Abbrev": "GB",
+    "FullName": "Ground Balls",
+    "Description": "Number of batted balls resulting in ground balls.",
+    "Category": "Pitching"
+  },
+  {
+    "ID": "P16",
+    "Abbrev": "FB",
+    "FullName": "Fly Balls",
+    "Description": "Number of batted balls resulting in fly balls.",
+    "Category": "Pitching"
+  },
+  {
+    "ID": "P17",
+    "Abbrev": "LD",
+    "FullName": "Line Drives",
+    "Description": "Number of batted balls resulting in line drives.",
+    "Category": "Pitching"
+  },
+  {
+    "ID": "P18",
+    "Abbrev": "Unk",
+    "FullName": "Unknown Contact",
+    "Description": "Balls in play where contact type is unknown.",
+    "Category": "Pitching"
+  },
+  {
+    "ID": "P19",
+    "Abbrev": "GSc",
+    "FullName": "Game Score",
+    "Description": "Pitcher’s performance metric calculated per game.",
+    "Category": "Pitching"
+  },
+  {
+    "ID": "P20",
+    "Abbrev": "IR",
+    "FullName": "Inherited Runners",
+    "Description": "Number of runners on base when pitcher entered the game.",
+    "Category": "Pitching"
+  },
+  {
+    "ID": "P21",
+    "Abbrev": "IS",
+    "FullName": "Inherited Score",
+    "Description": "Number of inherited runners who scored.",
+    "Category": "Pitching"
+  },
+  {
+    "ID": "P22",
+    "Abbrev": "WPA",
+    "FullName": "Win Probability Added",
+    "Description": "Change in team win probability attributed to the pitcher.",
+    "Category": "Pitching"
+  },
+  {
+    "ID": "P23",
+    "Abbrev": "aLI",
+    "FullName": "Average Leverage Index",
+    "Description": "Average game importance (leverage) of pitcher’s appearances.",
+    "Category": "Pitching"
+  },
+  {
+    "ID": "P24",
+    "Abbrev": "cWPA",
+    "FullName": "Championship Win Probability Added",
+    "Description": "Contribution to championship win probability.",
+    "Category": "Pitching"
+  },
+  {
+    "ID": "P25",
+    "Abbrev": "acLI",
+    "FullName": "Championship Leverage Index",
+    "Description": "Leverage index weighted for championship context.",
+    "Category": "Pitching"
+  },
+  {
+    "ID": "P26",
+    "Abbrev": "RE24",
+    "FullName": "Run Expectancy (24 States)",
+    "Description": "Total run value contribution based on 24 base/out configurations.",
+    "Category": "Pitching"
+  }
+  ]
+}

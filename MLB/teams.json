@@ -1,0 +1,116 @@
+{
+  "Arizona Diamondbacks": {
+    "Abbrev": "ARI",
+    "URL": "ARI"
+  },
+  "Atlanta Braves": {
+    "Abbrev": "ATL",
+    "URL": "ATL"
+  },
+  "Baltimore Orioles": {
+    "Abbrev": "BAL",
+    "URL": "BAL"
+  },
+  "Boston Red Sox": {
+    "Abbrev": "BOS",
+    "URL": "BOS"
+  },
+  "Chicago Cubs": {
+    "Abbrev": "CHC",
+    "URL": "CHC"
+  },
+  "Chicago White Sox": {
+    "Abbrev": "CHW",
+    "URL": "CHW"
+  },
+  "Cincinnati Reds": {
+    "Abbrev": "CIN",
+    "URL": "CIN"
+  },
+  "Cleveland Guardians": {
+    "Abbrev": "CLE",
+    "URL": "CLE"
+  },
+  "Colorado Rockies": {},
+  "Detroit Tigers": {
+    "Abbrev": "DET",
+    "URL": "DET"
+  },
+  "Houston Astros": {
+    "Abbrev": "HOU",
+    "URL": "HOU"
+  },
+  "Kansas City Royals": {
+    "Abbrev": "KCR",
+    "URL": "KCR"
+  },
+  "Los Angeles Angels": {
+    "Abbrev": "LAA",
+    "URL": "LAA"
+  },
+  "Los Angeles Dodgers": {
+    "Abbrev": "LAD",
+    "URL": "LAD"
+  },
+  "Miami Marlins": {
+    "Abbrev": "MIA",
+    "URL": "MIA"
+  },
+  "Milwaukee Brewers": {
+    "Abbrev": "MIL",
+    "URL": "MIL"
+  },
+  "Minnesota Twins": {
+    "Abbrev": "MIN",
+    "URL": "MIN"
+  },
+  "New York Mets": {
+    "Abbrev": "NYM",
+    "URL": "NYM"
+  },
+  "New York Yankees": {
+    "Abbrev": "NYY",
+    "URL": "NYY"
+  },
+  "Athletics": {
+    "Abbrev": "ATH",
+    "URL": "ATH"
+  },
+  "Philadelphia Phillies": {
+    "Abbrev": "PHI",
+    "URL": "PHI"
+  },
+  "Pittsburgh Pirates": {
+    "Abbrev": "PIT",
+    "URL": "PIT"
+  },
+  "San Diego Padres": {},
+  "San Francisco Giants": {
+    "Abbrev": "SFG",
+    "URL": "SFG"
+  },
+  "Seattle Mariners": {
+    "Abbrev": "SEA",
+    "URL": "SEA"
+  },
+  "St. Louis Cardinals": {
+    "Abbrev": "STL",
+    "URL": "STL"
+  },
+  "Tampa Bay Rays": {
+    "Abbrev": "TBR",
+    "URL": "TBR"
+  },
+  "Texas Rangers": {
+    "Abbrev": "TEX",
+    "URL": "TEX"
+  },
+  "Toronto Blue Jays": {
+    "Abbrev": "TOR",
+    "URL": "TOR"
+  },
+  "Washington Nationals": {
+    "Abbrev": "WSN",
+    "URL": "WSN"
+  }
+}
