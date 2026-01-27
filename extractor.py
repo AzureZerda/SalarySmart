@@ -54,7 +54,7 @@ class HTML_Extraction(ABC):
     @property
     @abstractmethod
     def cat(self):
-        """List or set of expected column names for conducting shapechecks"""
+        """Category- for logging purposes"""
         raise NotImplementedError()
 
 class FactMeta(ABC):
@@ -265,14 +265,7 @@ class Fact(Table):
         except:
             pass
 
-class Dim_Check(ABC):
-    @property
-    @abstractmethod
-    def primary_key(self):
-        """HTML class identifier"""
-        raise NotImplementedError()
-
-class Dimension(Table,Dim_Check):
+class Dimension(Table):
     def validate_export(self):
         df=self.df
         dup_mask=df[self.primary_key].duplicated(keep=False)
