@@ -1,0 +1,194 @@
+{
+  "Buffalo Bills": {
+    "url": "buf",
+    "abbr": "BUF",
+    "location": "Buffalo",
+    "mascot": "Bills"
+  },
+  "Miami Dolphins": {
+    "url": "mia",
+    "abbr": "MIA",
+    "location": "Miami",
+    "mascot": "Dolphins"
+  },
+  "New England Patriots": {
+    "url": "nwe",
+    "abbr": "NWE",
+    "location": "New England",
+    "mascot": "Patriots"
+  },
+  "New York Jets": {
+    "url": "nyj",
+    "abbr": "NYJ",
+    "location": "New York",
+    "mascot": "Jets"
+  },
+  "Baltimore Ravens": {
+    "url": "rav",
+    "abbr": "BAL",
+    "location": "Baltimore",
+    "mascot": "Ravens"
+  },
+  "Cleveland Browns": {
+    "url": "cle",
+    "abbr": "CLE",
+    "location": "Cleveland",
+    "mascot": "Browns"
+  },
+  "Pittsburgh Steelers": {
+    "url": "pit",
+    "abbr": "PIT",
+    "location": "Pittsburgh",
+    "mascot": "Steelers"
+  },
+  "Cincinnati Bengals": {
+    "url": "cin",
+    "abbr": "CIN",
+    "location": "Cincinnati",
+    "mascot": "Bengals"
+  },
+  "Kansas City Chiefs": {
+    "url": "kan",
+    "abbr": "KAN",
+    "location": "Kansas City",
+    "mascot": "Chiefs"
+  },
+  "Los Angeles Chargers": {
+    "url": "sdg",
+    "abbr": "LAC",
+    "location": "Los Angeles",
+    "mascot": "Chargers"
+  },
+  "Denver Broncos": {
+    "url": "den",
+    "abbr": "DEN",
+    "location": "Denver",
+    "mascot": "Broncos"
+  },
+  "Las Vegas Raiders": {
+    "url": "rai",
+    "abbr": "LVR",
+    "location": "Las Vegas",
+    "mascot": "Raiders"
+  },
+  "Houston Texans": {
+    "url": "htx",
+    "abbr": "HOU",
+    "location": "Houston",
+    "mascot": "Texans"
+  },
+  "Indianapolis Colts": {
+    "url": "clt",
+    "abbr": "IND",
+    "location": "Indianapolis",
+    "mascot": "Colts"
+  },
+  "Tennessee Titans": {
+    "url": "oti",
+    "abbr": "TEN",
+    "location": "Tennessee",
+    "mascot": "Titans"
+  },
+  "Jacksonville Jaguars": {
+    "url": "jax",
+    "abbr": "JAX",
+    "location": "Jacksonville",
+    "mascot": "Jaguars"
+  },
+  "New York Giants": {
+    "url": "nyg",
+    "abbr": "NYG",
+    "location": "New York",
+    "mascot": "Giants"
+  },
+  "Dallas Cowboys": {
+    "url": "dal",
+    "abbr": "DAL",
+    "location": "Dallas",
+    "mascot": "Cowboys"
+  },
+  "Washington Commanders": {
+    "url": "was",
+    "abbr": "WAS",
+    "location": "Washington",
+    "mascot": "Commanders"
+  },
+  "Philadelphia Eagles": {
+    "url": "phi",
+    "abbr": "PHI",
+    "location": "Philadelphia",
+    "mascot": "Eagles"
+  },
+  "Chicago Bears": {
+    "url": "chi",
+    "abbr": "CHI",
+    "location": "Chicago",
+    "mascot": "Bears"
+  },
+  "Green Bay Packers": {
+    "url": "gnb",
+    "abbr": "GNB",
+    "location": "Green Bay",
+    "mascot": "Packers"
+  },
+  "Detroit Lions": {
+    "url": "det",
+    "abbr": "DET",
+    "location": "Detroit",
+    "mascot": "Lions"
+  },
+  "Minnesota Vikings": {
+    "url": "min",
+    "abbr": "MIN",
+    "location": "Minnesota",
+    "mascot": "Vikings"
+  },
+  "Los Angeles Rams": {
+    "url": "ram",
+    "abbr": "LAR",
+    "location": "Los Angeles",
+    "mascot": "Rams"
+  },
+  "San Francisco 49ers": {
+    "url": "sfo",
+    "abbr": "SFO",
+    "location": "San Francisco",
+    "mascot": "49ers"
+  },
+  "Seattle Seahawks": {
+    "url": "sea",
+    "abbr": "SEA",
+    "location": "Seattle",
+    "mascot": "Seahawks"
+  },
+  "Arizona Cardinals": {
+    "url": "crd",
+    "abbr": "ARI",
+    "location": "Arizona",
+    "mascot": "Cardinals"
+  },
+  "Tampa Bay Buccaneers": {
+    "url": "tam",
+    "abbr": "TAM",
+    "location": "Tampa Bay",
+    "mascot": "Buccaneers"
+  },
+  "Atlanta Falcons": {
+    "url": "atl",
+    "abbr": "ATL",
+    "location": "Atlanta",
+    "mascot": "Falcons"
+  },
+  "New Orleans Saints": {
+    "url": "nor",
+    "abbr": "NOR",
+    "location": "New Orleans",
+    "mascot": "Saints"
+  },
+  "Carolina Panthers": {
+    "url": "car",
+    "abbr": "CAR",
+    "location": "Carolina",
+    "mascot": "Panthers"
+  }
+}
