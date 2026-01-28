@@ -2,6 +2,7 @@ import pandas as pd
 import hashlib
 import numpy as np
 import logging
+import re
 from abc import abstractmethod, ABC
 
 pd.set_option('future.no_silent_downcasting', True)
@@ -182,6 +183,7 @@ class Table: # note for review- this class should never be directly inherited.
         for k,v in category.__dict__.items():
             if not k.startswith('__'):
                 setattr(self,k,v)
+        self.table=soup.find('table',id=self.id)
         self.df = ExtractTable(soup,self.id,strip_text).fillna(0).replace('',0).infer_objects(copy=False)
         if validate==True:
             self.shapecheck()
@@ -276,6 +278,32 @@ class Dimension(Table):
 
         self.dup_df=df[dup_mask].sort_values(self.primary_key)
         raise TypeError
+    
+    def generate_id_from_column(df, cols,id_name='ID'):
+        combined = (
+            df[cols]
+            .astype(str)
+            .agg(''.join, axis=1)
+            .str.replace(r'[ \-_\.,]', '', regex=True)
+            .str.lower()
+        )
+
+        df[id_name] = [
+            hashlib.sha256(s.encode()).hexdigest()[:8]
+            for s in combined
+        ]
+
+        return df
+    
+    def generate_id(self,text):
+        combined = ''.join(str(x).strip().lower() for x in text)
+        cleaned = re.sub(r'[^a-z0-9]', '', combined)
+        return hashlib.sha256(cleaned.encode()).hexdigest()[:8]
+
+
+class Completed_Dim_Table(Dimension):
+    def __init__(self,df):
+        pass
 
 class ExtractionFailed(Exception):
     pass
