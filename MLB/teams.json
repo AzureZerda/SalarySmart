@@ -31,7 +31,10 @@
     "Abbrev": "CLE",
     "URL": "CLE"
   },
-  "Colorado Rockies": {},
+  "Colorado Rockies": {
+    "Abbrev": "COL",
+    "URL": "COL"
+  },
   "Detroit Tigers": {
     "Abbrev": "DET",
     "URL": "DET"
@@ -84,7 +87,10 @@
     "Abbrev": "PIT",
     "URL": "PIT"
   },
-  "San Diego Padres": {},
+  "San Diego Padres": {
+    "Abbrev": "SDP",
+    "URL": "SDP"
+  },
   "San Francisco Giants": {
     "Abbrev": "SFG",
     "URL": "SFG"
