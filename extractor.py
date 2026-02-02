@@ -3,6 +3,7 @@ import hashlib
 import numpy as np
 import logging
 import re
+from bs4 import BeautifulSoup
 from abc import abstractmethod, ABC
 
 pd.set_option('future.no_silent_downcasting', True)
@@ -191,7 +192,10 @@ class Table: # note for review- this class should never be directly inherited.
     def shapecheck(self):
         logging.debug('Conducting shapecheck.')
         actual_cols=set(self.df.columns)
-        expected=set(self.expected_cols.keys())
+        try:
+            expected=set(self.expected_cols.keys())
+        except AttributeError:
+            expected=set(self.cols.keys())
         self.missing_cols=expected-actual_cols
         if self.missing_cols:
             logging.critical(f'Shapecheck failed. The table is missing the following columns: {self.missing_cols}.')
@@ -310,3 +314,11 @@ class ExtractionFailed(Exception):
 
 class MissingCols(Exception):
     pass
+
+class Soup_Kitchen:
+    def __init__(self):
+        self.pots={} # used to store beautifulsoup objects
+
+    def cook(self,html):
+        soup=BeautifulSoup(html,'html.parser')
+        return soup
